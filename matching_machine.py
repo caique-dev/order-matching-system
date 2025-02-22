@@ -78,7 +78,7 @@ class OrderBook:
         
         return self.buy_side_vec.copy()
     
-    def get_sell_order(self, id: int = None):
+    def get_sell_order(self, id: int = None) -> Order:
         if (id):
             for elemento in self.sell_side_vec:
                 if (elemento.id == id):
@@ -110,30 +110,38 @@ class MatchingMachine:
             obj_order.id = self.book.sell_side_index
             self.book.sell_side_index += 1
 
-    def execute_orders(self, order: Order):
-        if (order.is_buy_order()):
-            for element in 
+    def buy_limit_orders(self, buy_order: Order):
+        for sell_order in self.book.get_sell_order():
+            if (
+                sell_order.price <= buy_order.price and 
+                sell_order.qty >= buy_order.qty
+            ):
+                # trade 
+                price = min(sell_order.price, buy_order.price)
+                print("Trade, price: {}, qty: {}".format(price, buy_order.qty))
 
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-current_order = 'limit buy 10 100'.split()
+current_order = 'limit buy 11 100'.split()
 machine.add_order(current_order)
-print(current_order)
+teste = Order(current_order)
+# print(current_order)
 
-current_order = 'limit buy 10 160'.split()
+current_order = 'limit sell 10 160'.split()
 machine.add_order(current_order)
-print(current_order)
+# print(current_order)
 
 
 current_order = 'limit sell 20 100'.split()
 machine.add_order(current_order)
-print(current_order)
+# print(current_order)
 
 current_order = 'limit sell 20 200'.split()
-teste = Order(current_order)
 machine.add_order(current_order)
-print(current_order)
 
-print(primary_book.get_buy_order())
-print(primary_book.get_sell_order())
+machine.buy_limit_orders(teste)
+# print(current_order)
+
+# print(primary_book.get_buy_order())
+# print(primary_book.get_sell_order())
