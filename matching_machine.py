@@ -1,3 +1,8 @@
+# TODO transform the orders vec in an hashmap
+# TODO Split the sell/buy vec in two differents arrays: limit and market
+# TODO implement the order verfication
+# TODO Verify the max id in get_buy_order
+
 class Order:
     def __init__(self, vec):
         self.id = None
@@ -36,9 +41,13 @@ class Order:
 
         return ret
     
-    # def __repr__(self):
-    #     self.__str__()
+    def __repr__(self):
+        _str = 'Order({})'.format(['{}:{}'.format(property, value) for property, value in vars(self).items()])
+
+        return _str
         
+    def is_buy_order(self):
+        return self.side == 'buy'
 
 class OrderBook:
     def __init__(self):
@@ -59,14 +68,33 @@ class OrderBook:
         
         return _str
 
-    def __repr__(self):
-        return self.orders_num
+    def get_buy_order(self, id: int = None):
+        if (id):
+            for elemento in self.buy_side_vec:
+                if (elemento.id == id):
+                    return elemento
+
+            return None
+        
+        return self.buy_side_vec.copy()
+    
+    def get_sell_order(self, id: int = None):
+        if (id):
+            for elemento in self.sell_side_vec:
+                if (elemento.id == id):
+                    return elemento
+            
+            return None
+
+        return self.sell_side_vec.copy()
+
+
 
 class MatchingMachine:
     def __init__(self, book: OrderBook):
         self.book = book
 
-    def add_order(self, order):
+    def add_order(self, order: Order):
         # create the object
         obj_order = Order(order)
 
@@ -82,9 +110,9 @@ class MatchingMachine:
             obj_order.id = self.book.sell_side_index
             self.book.sell_side_index += 1
 
-
-    def execute_order():
-        pass
+    def execute_orders(self, order: Order):
+        if (order.is_buy_order()):
+            for element in 
 
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
@@ -93,12 +121,19 @@ current_order = 'limit buy 10 100'.split()
 machine.add_order(current_order)
 print(current_order)
 
+current_order = 'limit buy 10 160'.split()
+machine.add_order(current_order)
+print(current_order)
+
+
 current_order = 'limit sell 20 100'.split()
 machine.add_order(current_order)
 print(current_order)
 
 current_order = 'limit sell 20 200'.split()
+teste = Order(current_order)
 machine.add_order(current_order)
 print(current_order)
 
-print(primary_book)
+print(primary_book.get_buy_order())
+print(primary_book.get_sell_order())
