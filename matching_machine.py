@@ -122,6 +122,7 @@ class MatchingMachine:
                 # trade 
                 price = min(sell_order.price, buy_order.price)
                 print("Trade, price: {}, qty: {}".format(price, buy_order.qty))
+                return
 
     def sell_limit_order(self, sell_order: Order):
         for buy_order in self.book.get_buy_order():
@@ -133,6 +134,7 @@ class MatchingMachine:
                 # trade 
                 price = max(buy_order.price, sell_order.price)
                 print("Trade, price: {}, qty: {}".format(price, sell_order.qty))
+                return
 
     def buy_market_order(self, buy_order: Order):
         # ordering the array based on price
@@ -146,6 +148,7 @@ class MatchingMachine:
             ):
                 # trade 
                 print("Trade, price: {}, qty: {}".format(sell_order.price, buy_order.qty))
+                return
 
     def sell_market_order(self, sell_order: Order):
         # ordering the array based on price
@@ -161,6 +164,7 @@ class MatchingMachine:
             ):
                 # trade 
                 print("Trade, price: {}, qty: {}".format(buy_order.price, sell_order.qty))
+                return
 
 
 primary_book = OrderBook()
