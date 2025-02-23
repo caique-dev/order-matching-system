@@ -59,11 +59,23 @@ class Order:
 
 class OrderBook:
     def __init__(self):
-        self.buy_side_vec = []
+        self.buy_side_dict = {}
         self.buy_side_index = 0
 
-        self.sell_side_vec = []
+        self.sell_side_dict = {}
         self.sell_side_index = 0
+
+    def get_last_buy_order_id(self):
+        return self.buy_side_index
+    
+    def get_last_sell_order_id(self):
+        return self.sell_side_index
+
+    def incremment_buy_side_index(self):
+        self.buy_side_index += 1
+    
+    def incremment_sell_side_index(self):
+        self.sell_side_index += 1
 
     def __str__(self):
         _str = 'Buy Side: \n'
@@ -103,14 +115,23 @@ class MatchingMachine:
     def add_order(self, obj_order: Order):
         # adding to the book
         if (obj_order.side == 'buy'):
-            self.book.buy_side_vec.append(obj_order)
-            # filling id
-            obj_order.id = self.book.buy_side_index
+            order_id = self.book.get_last_buy_order_id()
+            self.book.buy_side_dict[order_id] = obj_order
+            
+            # fillint the id property
+            obj_order.id = order_id
+
+            # updating the last id
             self.book.buy_side_index += 1
+            
         else: 
-            self.book.sell_side_vec.append(obj_order)
-            # filling id
-            obj_order.id = self.book.sell_side_index
+            order_id = self.book.get_last_sell_order_id()
+            self.book.sell_side_dict[order_id] = obj_order
+            
+            # fillint the id property
+            obj_order.id = order_id
+
+            # updating the last id
             self.book.sell_side_index += 1
 
     def buy_limit_order(self, buy_order: Order):
@@ -174,9 +195,12 @@ class MatchingMachine:
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-current_order = Order({'type': 'limit', 'side': 'buy', 'price': 11, 'qty': 100})
+current_order = Order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': -1})
 machine.add_order(current_order)
 # print(current_order)
+
+current_order = Order({'type': 'market', 'side': 'sell', 'qty': 20})
+machine.add_order(current_order)
 
 current_order = Order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 20})
 machine.add_order(current_order)
@@ -187,7 +211,6 @@ machine.add_order(current_order)
 current_order = Order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
 machine.add_order(current_order)
 
-current_order = Order({'type': 'market', 'side': 'sell', 'qty': 20})
 machine.add_order(current_order)
 
 machine.print_book()
