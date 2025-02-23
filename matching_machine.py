@@ -23,8 +23,8 @@ class Order:
             self.qty = vec[2]
 
         # verifications
-        if (self.qty == 0 or self.price == 0):
-            pass
+        # if (self.qty == 0 or self.price == 0):
+        #     pass
             # todo implementar tratamento
 
         return
@@ -138,9 +138,6 @@ class MatchingMachine:
         # ordering the array based on price
         lower_price = self.book.get_sell_order()
         lower_price.sort(key = lambda order : order.price)
-        print(primary_book)
-        print(lower_price)
-
         
         for sell_order in lower_price:
             if (
@@ -150,6 +147,22 @@ class MatchingMachine:
                 # trade 
                 print("Trade, price: {}, qty: {}".format(sell_order.price, buy_order.qty))
 
+    def sell_market_order(self, sell_order: Order):
+        # ordering the array based on price
+        highest_price = self.book.get_buy_order()
+        highest_price.sort(reverse=True, key = lambda order : order.price)
+        print(primary_book)
+        print(highest_price)
+        
+        for buy_order in highest_price:
+            if (
+                # this order is executed immediately at the best price found
+                buy_order.qty >= sell_order.qty
+            ):
+                # trade 
+                print("Trade, price: {}, qty: {}".format(buy_order.price, sell_order.qty))
+
+
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
@@ -157,19 +170,19 @@ current_order = Order('limit buy 11 100')
 machine.add_order(current_order)
 # print(current_order)
 
-current_order = Order('limit sell 200 20')
+current_order = Order('limit buy 10 20')
 machine.add_order(current_order)
 
-current_order = Order('limit sell 130 20')
+current_order = Order('limit buy 180 20')
 machine.add_order(current_order)
 
-current_order = Order('limit sell 160 20')
+current_order = Order('limit buy 160 20')
 machine.add_order(current_order)
 
-current_order = Order('limit sell 195 20')
+current_order = Order('market sell 20')
 machine.add_order(current_order)
 
-machine.buy_market_order(current_order)
+machine.sell_market_order(current_order)
 # print(current_order)
 
 # print(primary_book.get_buy_order())
