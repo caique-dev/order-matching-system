@@ -1,4 +1,4 @@
-# TODO Make an unique trade
+# TODO Make an unique trade - ask about making different trades for the same order
 # TODO transform the orders vec in an hashmap
 # TODO function to print the book
 # TODO Split the sell/buy vec in two differents arrays: limit and market
@@ -9,24 +9,25 @@
 # TODO Rewiew the str of book
 
 class Order:
-    def __init__(self, str_order):
-        vec = str_order.split()
-
+    def __init__(self, order_dict):
         self.id = None
-        self.type = vec[0]
-        self.side = vec[1]
+        self.type = order_dict['type']
+        self.side = order_dict['side']
         
         if (self.type == "limit"):
-            self.price = vec[2]
-            self.qty = vec[3]
-        else:
-            self.qty = vec[2]
+            # verification
+            if (order_dict['price'] <= 0):
+                print('This order has an invalid price.')
+                return
 
-        # verifications
-        # if (self.qty == 0 or self.price == 0):
-        #     pass
-            # todo implementar tratamento
+            self.price = order_dict['price']
 
+        # verification
+        if (order_dict['qty'] <= 0):
+                print('This order has an invalid quantity.')
+                return
+        
+        self.qty = order_dict['qty']
         return
     
     def __str__(self):
@@ -166,27 +167,30 @@ class MatchingMachine:
                 print("Trade, price: {}, qty: {}".format(buy_order.price, sell_order.qty))
                 return
 
+    def print_book(self):
+        print(self.book)
+
 
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-current_order = Order('limit buy 11 100')
+current_order = Order({'type': 'limit', 'side': 'buy', 'price': 11, 'qty': 100})
 machine.add_order(current_order)
 # print(current_order)
 
-current_order = Order('limit buy 10 20')
+current_order = Order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 20})
 machine.add_order(current_order)
 
-current_order = Order('limit buy 180 20')
+current_order = Order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 20})
 machine.add_order(current_order)
 
-current_order = Order('limit buy 160 20')
+current_order = Order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
 machine.add_order(current_order)
 
-current_order = Order('market sell 20')
+current_order = Order({'type': 'market', 'side': 'sell', 'qty': 20})
 machine.add_order(current_order)
 
-machine.sell_market_order(current_order)
+machine.print_book()
 # print(current_order)
 
 # print(primary_book.get_buy_order())
