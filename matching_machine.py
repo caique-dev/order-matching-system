@@ -1,7 +1,8 @@
-# TODO Make an unique trade - ask about making different trades for the same order
+# TODO Finish the change order implementation
 # TODO Verify the max id in get_buy_order
 # TODO implement the change order method
-# TODO order creation output
+# TODO implement input handling
+# TODO test the new order storage mode
 
 # TODO Rewiew the str of book
 
@@ -63,11 +64,25 @@ class Order:
     def get_qty(self):
         return self.qty
 
+    def set_qty(self, qty):
+        if (qty > 0):
+            self.qty = qty
+            return
+        
+        print('The new quantity is invalid.')
+
     def get_side(self):
         return self.side
 
     def get_price(self):
         return self.price
+
+    def set_price(self, price):
+        if (price > 0):
+            self.price = price
+            return
+        
+        print('The new price is invalid.')
 
     def get_type(self):
         return self.type
@@ -77,17 +92,16 @@ class Order:
 
 class OrderBook:
     def __init__(self):
+        self.order_index = 0
         self.buy_side_dict = {}
-        self.buy_side_index = 0
-
         self.sell_side_dict = {}
-        self.sell_side_index = 0
+        self.all_orders_dict = {}
 
     def add_order(self, order: Order):
         if (order.is_buy_order()):
-            order.set_id(self.get_last_buy_order_id())
+            order.set_id(self.get_last_order_id())
             self.buy_side_dict[order.get_id()] = order
-            self.incremment_buy_side_index()
+            self.incremment_order_index()
 
             print_msg = 'Order created: (ID: {}) {} {} {} @ {}'.format(
                 order.get_id(),
@@ -96,37 +110,37 @@ class OrderBook:
                 order.get_qty(),
                 order.get_price()
             )
-            print(print_msg)
-            return
-        
-        order.set_id(self.get_last_sell_order_id())
-        self.sell_side_dict[order.get_id()] = order
-        self.incremment_sell_side_index()
+        else:
+            order.set_id(self.get_last_order_id())
+            self.sell_side_dict[order.get_id()] = order
+            self.incremment_order_index()
 
-        print_msg = 'Order created: (ID: {}) {} {} {}'.format(
-            order.get_id(),
-            order.get_type(),
-            order.get_side(),
-            order.get_qty(),
-        )
+            print_msg = 'Order created: (ID: {}) {} {} {}'.format(
+                order.get_id(),
+                order.get_type(),
+                order.get_side(),
+                order.get_qty(),
+            )
+        
+        self.all_orders_dict[order.get_id()] = order
         print(print_msg)
 
-
-
-    def remove_order():
+    def remove_order(self):
         pass
 
-    def get_last_buy_order_id(self):
-        return self.buy_side_index
-    
-    def get_last_sell_order_id(self):
-        return self.sell_side_index
+    def change_order(self, id: int, new_infos: list):
+        if (
+            id in self.get_sell_order() or
+            id in self.get_buy_order()
+        ):
+            order = 
+            if ()
 
-    def incremment_buy_side_index(self):
-        self.buy_side_index += 1
-    
-    def incremment_sell_side_index(self):
-        self.sell_side_index += 1
+    def get_last_order_id(self):
+        return self.order_index
+
+    def incremment_order_index(self):
+        self.order_index += 1
 
     def __str__(self):
         _str = 'Buy Side: \n'
@@ -139,25 +153,12 @@ class OrderBook:
         
         return _str
 
-    def get_buy_order(self, id: int = None):
-        if (id):
-            for elemento in self.buy_side_vec:
-                if (elemento.id == id):
-                    return elemento
+    def get_order(self, id: int):
+        for elemento in self.buy_side_vec:
+            if (elemento.id == id):
+                return elemento
 
-            return None
-        
-        return self.buy_side_vec.copy()
-    
-    def get_sell_order(self, id: int = None) -> Order:
-        if (id):
-            for elemento in self.sell_side_vec:
-                if (elemento.id == id):
-                    return elemento
-            
-            return None
-
-        return self.sell_side_vec.copy()
+        return None
 
 class MatchingMachine:
     def __init__(self, book: OrderBook):
