@@ -1,14 +1,15 @@
 # TODO Make an unique trade - ask about making different trades for the same order
 # TODO Verify the max id in get_buy_order
 # TODO implement the change order method
+# TODO order creation output
 
 # TODO Rewiew the str of book
 
 class Order:
-    def __init__(self, order_dict):
+    def __init__(self, order_dict: dict):
         self.id = None
 
-        if (order_dict['type'] != 'buy' and order_dict['type'] != 'sell'):
+        if (order_dict['type'] != 'market' and order_dict['type'] != 'limit'):
                 print('This order has an invalid type.')
                 return
         self.type = order_dict['type']
@@ -51,10 +52,26 @@ class Order:
         return ret
     
     def __repr__(self):
-        _str = 'Order({})'.format(['{}:{}'.format(property, value) for property, value in vars(self).items()])
+        return '{} {} {} {}'.format(self.type, self.side, self.price if self.type == 'limit' else '', self.qty)
+    
+    def set_id(self, id: int):
+        self.id = id
 
-        return _str
-        
+    def get_id(self):
+        return self.id
+
+    def get_qty(self):
+        return self.qty
+
+    def get_side(self):
+        return self.side
+
+    def get_price(self):
+        return self.price
+
+    def get_type(self):
+        return self.type
+
     def is_buy_order(self):
         return self.side == 'buy'
 
@@ -65,6 +82,39 @@ class OrderBook:
 
         self.sell_side_dict = {}
         self.sell_side_index = 0
+
+    def add_order(self, order: Order):
+        if (order.is_buy_order()):
+            order.set_id(self.get_last_buy_order_id())
+            self.buy_side_dict[order.get_id()] = order
+            self.incremment_buy_side_index()
+
+            print_msg = 'Order created: (ID: {}) {} {} {} @ {}'.format(
+                order.get_id(),
+                order.get_type(),
+                order.get_side(),
+                order.get_qty(),
+                order.get_price()
+            )
+            print(print_msg)
+            return
+        
+        order.set_id(self.get_last_sell_order_id())
+        self.sell_side_dict[order.get_id()] = order
+        self.incremment_sell_side_index()
+
+        print_msg = 'Order created: (ID: {}) {} {} {}'.format(
+            order.get_id(),
+            order.get_type(),
+            order.get_side(),
+            order.get_qty(),
+        )
+        print(print_msg)
+
+
+
+    def remove_order():
+        pass
 
     def get_last_buy_order_id(self):
         return self.buy_side_index
@@ -113,27 +163,9 @@ class MatchingMachine:
     def __init__(self, book: OrderBook):
         self.book = book
 
-    def add_order(self, obj_order: Order):
-        # adding to the book
-        if (obj_order.side == 'buy'):
-            order_id = self.book.get_last_buy_order_id()
-            self.book.buy_side_dict[order_id] = obj_order
-            
-            # fillint the id property
-            obj_order.id = order_id
-
-            # updating the last id
-            self.book.buy_side_index += 1
-            
-        else: 
-            order_id = self.book.get_last_sell_order_id()
-            self.book.sell_side_dict[order_id] = obj_order
-            
-            # fillint the id property
-            obj_order.id = order_id
-
-            # updating the last id
-            self.book.sell_side_index += 1
+    def add_order(self, order: dict):
+        order_obj = Order(order)
+        self.book.add_order(order_obj)
 
     def buy_limit_order(self, buy_order: Order):
         for sell_order in self.book.get_sell_order():
@@ -192,27 +224,18 @@ class MatchingMachine:
     def print_book(self):
         print(self.book)
 
-
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-current_order = Order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': -1})
-machine.add_order(current_order)
-# print(current_order)
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10})
 
-current_order = Order({'type': 'market', 'side': 'sell', 'qty': 20})
-machine.add_order(current_order)
+machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
-current_order = Order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 20})
-machine.add_order(current_order)
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 20})
 
-current_order = Order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 20})
-machine.add_order(current_order)
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 20})
 
-current_order = Order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
-machine.add_order(current_order)
-
-machine.add_order(current_order)
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
 
 machine.print_book()
 # print(current_order)
