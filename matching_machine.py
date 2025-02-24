@@ -1,8 +1,4 @@
 # TODO Make an unique trade - ask about making different trades for the same order
-# TODO transform the orders vec in an hashmap
-# TODO function to print the book
-# TODO Split the sell/buy vec in two differents arrays: limit and market
-# TODO implement the order verfication
 # TODO Verify the max id in get_buy_order
 # TODO implement the change order method
 
@@ -11,24 +7,29 @@
 class Order:
     def __init__(self, order_dict):
         self.id = None
+
+        if (order_dict['type'] != 'buy' and order_dict['type'] != 'sell'):
+                print('This order has an invalid type.')
+                return
         self.type = order_dict['type']
+
+        if (order_dict['side'] != 'buy' and order_dict['side'] != 'sell'):
+                print('This order has an invalid "side".')
+                return
         self.side = order_dict['side']
         
         if (self.type == "limit"):
-            # verification
             if (order_dict['price'] <= 0):
                 print('This order has an invalid price.')
                 return
 
             self.price = order_dict['price']
 
-        # verification
         if (order_dict['qty'] <= 0):
                 print('This order has an invalid quantity.')
                 return
         
         self.qty = order_dict['qty']
-        return
     
     def __str__(self):
         if (self.type == 'limit'):
