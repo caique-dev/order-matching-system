@@ -202,50 +202,58 @@ class MatchingMachine:
             if (sell_order.get_price() <= buy_order.get_price()):
                 # trade 
                 trade_price = min(sell_order.price, buy_order.price)
-                trade_qty = abs(sell_order.get_qty() - buy_order.get_qty())
+                trade_qty = buy_order.get_qty() if (sell_order.get_qty() >= buy_order.get_qty()) else (sell_order.get_qty())
 
                 print("Trade, price: {}, qty: {}".format(trade_price, trade_qty))
 
-                if (trade_qty):
-                    self.partial_trade(
-                        sell_order_id=sell_order.get_id(),
-                        buy_order_id=buy_order.get_id()
-                    )
+                # partial trade
+                if (buy_order.get_qty() > sell_order.get_qty()):
+                    self.partial_trade({
+                        'sell_order_id': sell_order.get_id(),
+                        'buy_order_id': buy_order.get_id()
+                    })
                     return False
                 else:
                     # order completely executed
                     return True
-                
-
-        return False
 
     def sell_limit_order(self, id: int) -> bool:
-        sell_order = self.get_order(id)
-        for buy_order in self.book.get_buy_order():
-            if (
-                # this order is executed if the buy price is equal to or greater than the desired sell price
-                buy_order.price >= sell_order.price and 
-                buy_order.qty >= sell_order.qty
-            ):
+        sell_order_target = self.get_order(id)
+        for buy_order_id in self.get_buy_orders():
+            buy_order = self.get_order(buy_order_id)
+
+            # this order is executed if the buy price is equal to or greater than the desired sell price
+            if (buy_order.get_price() >= sell_order_target.get_price()):
                 # trade 
-                price = max(buy_order.price, sell_order.price)
-                print("Trade, price: {}, qty: {}".format(price, sell_order.qty))
-                return
+                trade_price = max(sell_order_target.get_price(), buy_order.get_price())
+                trade_qty = sell_order_target.get_qty() if (sell_order_target.get_qty <= buy_order.get_qty()) else (buy_order.get_qty())
+
+                print("Trade, price: {}, qty: {}".format(trade_price, trade_qty))
+
+                # partial trade
+                if (buy_order.get_qty() > sell_order_target.get_qty()):
+                    self.partial_trade({
+                        'sell_order_id': sell_order_target.get_id(),
+                        'buy_order_id': buy_order.get_id()
+                    })
+                    return False
+                else:
+                    # order completely executed
+                    return True
 
     def buy_market_order(self, id: int) -> bool:
         buy_order = self.get_order(id)
-        # ordering the array based on price
-        lower_price = self.book.get_sell_order()
+
+        # ordering the array based on price 
+        lower_price = [self.get_order(order_id) for order_id in self.get_sell_orders()]
         lower_price.sort(key = lambda order : order.price)
         
-        for sell_order in lower_price:
-            if (
-                # this order is executed immediately at the best price found
-                sell_order.qty >= buy_order.qty
-            ):
-                # trade 
-                print("Trade, price: {}, qty: {}".format(sell_order.price, buy_order.qty))
-                return
+        # for sell_order in lower_price:
+        #     # this order is executed immediately at the best price found
+        #     if (sell_order. >= buy_order.):
+        #         # trade 
+        #         print("Trade, price: {}, qty: {}".format(sell_order.price, buy_order.qty))
+        #         return
 
     def sell_market_order(self, id: int) -> bool:
         _order = self.get_order(id)
@@ -264,7 +272,11 @@ class MatchingMachine:
                 print("Trade, price: {}, qty: {}".format(buy_order.price, sell_order.qty))
                 return
 
-    def get_sell_orders(self)
+    def get_sell_orders(self):
+        return (self.book.get_sell_orders())
+
+    def get_buy_orders(self):
+        return (self.book.get_buy_orders())
 
     def print_book(self):
         print(self.book)
@@ -288,30 +300,41 @@ class MatchingMachine:
     def try_execute_order(self, id: int) -> bool:
         if (self.order_exists(id)):
             order = self.get_order(id)
-            # verifying if is a buy order
+            
+            # make trade
             if (order.is_buy_order()):
                 if (order.is_limit_order()):
-                    for sell_order_id in self.get
-
+                    partial_trade = self.buy_limit_order(id)
+                else:
+                    partial_trade = self.buy_market_order(id)
+            else:
+                if (order.is_limit_order()):
+                    partial_trade = self.sell_limit_order(id)
+                else:
+                    partial_trade = self.sell_market_order(id)
         else:
             return False
+        
+        # partial trade
+        if (partial_trade):
+            self.partial_trade()
 
         return True
 
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-teste = machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10})
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10})
 
 machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
 machine.add_order({'type': 'limit', 'side': 'buy', 'price': 9, 'qty': 20})
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 20})
+machine.add_order({'type': 'limit', 'side': 'sell', 'price': 180, 'qty': 20})
 
 machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
 
-machine.try_execute_order(0)
+machine.buy_market_order(1)
 # print(current_order)
 
 # print(primary_book.get_buy_order())
