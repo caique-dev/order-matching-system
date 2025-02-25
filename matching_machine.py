@@ -207,7 +207,7 @@ class MatchingMachine:
                 print("Trade, price: {}, qty: {}".format(trade_price, trade_qty))
 
                 # partial trade
-                if (buy_order.get_qty() > sell_order.get_qty()):
+                if (buy_order.get_qty() != sell_order.get_qty()):
                     self.partial_trade({
                         'sell_order_id': sell_order.get_id(),
                         'buy_order_id': buy_order.get_id()
@@ -231,46 +231,89 @@ class MatchingMachine:
                 print("Trade, price: {}, qty: {}".format(trade_price, trade_qty))
 
                 # partial trade
-                if (buy_order.get_qty() > sell_order_target.get_qty()):
-                    self.partial_trade({
-                        'sell_order_id': sell_order_target.get_id(),
-                        'buy_order_id': buy_order.get_id()
-                    })
+                if (buy_order.get_qty() != sell_order_target.get_qty()):
+                    self.partial_trade(
+                        sell_order_id= sell_order_target.get_id(),
+                        buy_order_id= buy_order.get_id()
+                    )
                     return False
                 else:
                     # order completely executed
                     return True
 
     def buy_market_order(self, id: int) -> bool:
-        buy_order = self.get_order(id)
+        buy_order_target = self.get_order(id)
 
-        # ordering the array based on price 
-        lower_price = [self.get_order(order_id) for order_id in self.get_sell_orders()]
-        lower_price.sort(key = lambda order : order.price)
+        # generating an array from dict
+        lower_price = []
+        for order_id in self.get_sell_orders():
+            sell_order = self.get_order(order_id)
+
+            # removing market orders from the array
+            if (sell_order.is_limit_order()):
+                lower_price.append(sell_order)
         
-        # for sell_order in lower_price:
-        #     # this order is executed immediately at the best price found
-        #     if (sell_order. >= buy_order.):
-        #         # trade 
-        #         print("Trade, price: {}, qty: {}".format(sell_order.price, buy_order.qty))
-        #         return
+        # sorting the array in ascending order            
+        lower_price.sort(key = lambda order : order.price)
+
+        # verifying if the array is not empty
+        if (lower_price):
+            sell_order = lower_price[0]
+            trade_price = lower_price[0].get_price()
+            if (buy_order_target.get_qty() <= sell_order.get_qty()):
+                trade_qty = buy_order_target.get_qty()
+            else:
+                trade_qty = sell_order.get_qty()
+            
+            print_msg = 'Trade, price: {}, qty: {}'.format(trade_qty, trade_price)
+            print(print_msg)
+
+            # partial trade
+            if (buy_order_target.get_qty() != sell_order.get_qty()):
+                self.partial_trade(
+                    sell_order_id= sell_order.get_id(),
+                    buy_order_id= buy_order_target.get_id
+                )
+                return False
+            else:
+                return True
 
     def sell_market_order(self, id: int) -> bool:
-        _order = self.get_order(id)
-        # ordering the array based on price
-        highest_price = self.book.get_buy_order()
-        highest_price.sort(reverse=True, key = lambda order : order.price)
-        print(primary_book)
-        print(highest_price)
+        sell_order_target = self.get_order(id)
+
+        # generating an array from dict
+        highest_price = []
+        for order_id in self.get_buy_orders():
+            buy_order = self.get_order(order_id)
+
+            # removing market orders from the array
+            if (buy_order.is_limit_order()):
+                highest_price.append(buy_order)
         
-        for buy_order in highest_price:
-            if (
-                # this order is executed immediately at the best price found
-                buy_order.qty >= sell_order.qty
-            ):
-                # trade 
-                print("Trade, price: {}, qty: {}".format(buy_order.price, sell_order.qty))
-                return
+        # sorting the array in descending order
+        highest_price.sort(key = lambda order : order.price, reverse=True)
+
+        # verifying if the array is not empty
+        if (highest_price):
+            buy_order = highest_price[0]
+            trade_price = highest_price[0].get_price()
+            if (sell_order_target.get_qty() <= buy_order.get_qty()):
+                trade_qty = sell_order_target.get_qty()
+            else:
+                trade_qty = buy_order.get_qty()
+            
+            print_msg = 'Trade, price: {}, qty: {}'.format(trade_qty, trade_price)
+            print(print_msg)
+
+            # partial trade
+            if (sell_order_target.get_qty() != buy_order.get_qty()):
+                self.partial_trade(
+                    buy_order_id = buy_order.get_id(),
+                    sell_order_id = sell_order_target.get_id
+                )
+                return False
+            else:
+                return True
 
     def get_sell_orders(self):
         return (self.book.get_sell_orders())
@@ -330,11 +373,11 @@ machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
 machine.add_order({'type': 'limit', 'side': 'buy', 'price': 9, 'qty': 20})
 
-machine.add_order({'type': 'limit', 'side': 'sell', 'price': 180, 'qty': 20})
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 19})
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 15})
 
-machine.buy_market_order(1)
+machine.try_execute_order(1)
 # print(current_order)
 
 # print(primary_book.get_buy_order())
