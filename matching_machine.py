@@ -1,9 +1,8 @@
+# TODO remove prints from OrderBook methods
 # TODO Finish the change order implementation
 # TODO Verify the max id in get_buy_order
 # TODO implement the change order method
 # TODO implement input handling
-# TODO implement the 
-# TODO Rewiew the str of book
 
 class Order:
     def __init__(self, order_dict: dict):
@@ -11,34 +10,34 @@ class Order:
 
         if (order_dict['type'] != 'market' and order_dict['type'] != 'limit'):
                 print('This order has an invalid type.')
-                return
+                return None
         self.type = order_dict['type']
 
         if (order_dict['side'] != 'buy' and order_dict['side'] != 'sell'):
                 print('This order has an invalid "side".')
-                return
+                return None
         self.side = order_dict['side']
         
         if (self.type == "limit"):
             if (order_dict['price'] <= 0):
                 print('This order has an invalid price.')
-                return
+                return None
 
             self.price = order_dict['price']
 
         if (order_dict['qty'] <= 0):
                 print('This order has an invalid quantity.')
-                return
+                return None
         
         self.qty = order_dict['qty']
     
     def __str__(self):
-        print_msg = '(ID: {}) {} {} {} @ {}'.format(
+        print_msg = '(ID: {}) {} {} {} {}'.format(
                 self.get_id(),
                 self.get_type(),
                 self.get_side(),
                 self.get_qty(),
-                self.get_price() if self.type == 'limit' else ''
+                "@ " + str(self.get_price()) if self.type == 'limit' else ''
             )
 
         return print_msg
@@ -101,17 +100,44 @@ class OrderBook:
         self.all_orders_dict[order.get_id()] = order
         print('Created the order: ', order)
 
-    def remove_order(self):
-        pass
+    def cancel_order(self, id: int) -> Order:
+        order = self.get_order(id)
 
-    def change_order(self, id: int, new_infos: list):
-        # if (
-        #     id in self.get_sell_order() or
-        #     id in self.get_buy_order()
-        # ):
-        #     order = 
-        #     if ()
-        pass
+        if not (order):
+            print('This is an invalid ID.')
+        else:
+            # removing the order from the general dict
+            del self.all_orders_dict[id]
+
+            # removing the order from one of two specific  dict
+            if (order.is_buy_order()):
+                del self.buy_side_dict[id]
+                return order
+        
+        del self.sell_side_dict[id]
+        return order
+
+    def change_order(self, id: int, new_infos: dict):
+        if not (id in self.get_all_orders()):
+            print('This is an invalid ID.')
+            return None
+        else: 
+            order = self.get_order(id)
+
+            # updating the order's info
+            if ('price' in new_infos):
+                order.set_price(new_infos['price'])
+            if ('qty' in new_infos):
+                order.set_qty(new_infos['qty'])
+            
+            # removing the priority
+            self.cancel_order(order.id)             
+            self.all_orders_dict[order.id] = order
+
+            if (order.is_buy_order()):
+                self.buy_side_dict[order.id] = order
+            else:
+                self.buy_buy_dict[order.id] = order
 
     def get_last_order_id(self):
         return self.order_index
@@ -133,7 +159,11 @@ class OrderBook:
     def get_order(self, id: int) -> Order:
         if (id in self.all_orders_dict):
             return self.all_orders_dict[id]
-        
+    
+    def get_all_orders(self) -> dict:
+        return self.all_orders_dict
+
+
         return None
         
 
@@ -141,9 +171,13 @@ class MatchingMachine:
     def __init__(self, book: OrderBook):
         self.book = book
 
-    def add_order(self, order: dict):
+    def add_order(self, order: dict) -> Order:
         order_obj = Order(order)
-        self.book.add_order(order_obj)
+        if (order_obj):
+            self.book.add_order(order_obj)
+        
+        return order_obj
+
 
     def buy_limit_order(self, buy_order: Order):
         for sell_order in self.book.get_sell_order():
@@ -205,20 +239,32 @@ class MatchingMachine:
     def get_order(self, id: int):
         return self.book.get_order(id)
 
+    def cancel_order(self, id: int) -> Order:
+        order = self.book.cancel_order(id)
+        if (order):
+            print('Order cancelled: ', order)
+
+        return order
+
+    def change_order(self, id: int, new_infos: dict):
+        self.book.change_order(id, new_infos)
+
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10})
+teste = machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10})
 
-# machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
+machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
-# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 20})
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 20})
 
 # machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 20})
 
 # machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
 
-print(primary_book)
+machine.print_book()
+machine.change_order(teste.id, {'price': 1200, 'qty': 10})
+machine.print_book()
 # print(current_order)
 
 # print(primary_book.get_buy_order())
