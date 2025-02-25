@@ -1,8 +1,8 @@
 # TODO remove prints from OrderBook methods
-# TODO Finish the change order implementation
-# TODO Verify the max id in get_buy_order
-# TODO implement the change order method
+# TODO complete the trade methods (partial trade)
+# TODO complete the unified trade order method
 # TODO implement input handling
+# TODO implement the order executor
 
 class Order:
     def __init__(self, order_dict: dict):
@@ -77,12 +77,16 @@ class Order:
     def get_type(self):
         return self.type
 
-    def is_buy_order(self):
-        return self.side == 'buy'
+    def is_buy_order(self) -> bool:
+        return (self.side == 'buy')
+
+    def is_limit_order(self) -> bool:
+        return (self.type == 'limit')
 
 class OrderBook:
     def __init__(self):
         self.order_index = 0
+        
         self.buy_side_dict = {}
         self.sell_side_dict = {}
         self.all_orders_dict = {}
@@ -137,7 +141,7 @@ class OrderBook:
             if (order.is_buy_order()):
                 self.buy_side_dict[order.id] = order
             else:
-                self.buy_buy_dict[order.id] = order
+                self.sell_side_dict[order.id] = order
 
     def get_last_order_id(self):
         return self.order_index
@@ -165,7 +169,15 @@ class OrderBook:
 
 
         return None
-        
+
+    def get_buy_orders(self) -> dict:
+        return (self.buy_side_dict)
+    
+    def get_sell_orders(self) -> dict:
+        return (self.sell_side_dict)
+
+    def order_exists(self, id: int) -> bool:
+        return (id in self.all_orders_dict)
 
 class MatchingMachine:
     def __init__(self, book: OrderBook):
@@ -178,20 +190,37 @@ class MatchingMachine:
         
         return order_obj
 
+    def partial_trade(self, sell_order_id: int, buy_order_id: int):
+        print('partial trade!')
+        pass
 
-    def buy_limit_order(self, buy_order: Order):
-        for sell_order in self.book.get_sell_order():
-            if (
-                # this order is executed if the ssell price is equal to or lower than the desired buy price
-                sell_order.price <= buy_order.price and 
-                sell_order.qty >= buy_order.qty
-            ):
+    def buy_limit_order(self, id: int) -> bool:
+        buy_order = self.get_order(id)
+        for sell_order in self.book.get_sell_orders():
+            sell_order = self.get_order(sell_order)
+            # this order is executed if the sell price is equal to or lower than the desired buy price
+            if (sell_order.get_price() <= buy_order.get_price()):
                 # trade 
-                price = min(sell_order.price, buy_order.price)
-                print("Trade, price: {}, qty: {}".format(price, buy_order.qty))
-                return
+                trade_price = min(sell_order.price, buy_order.price)
+                trade_qty = abs(sell_order.get_qty() - buy_order.get_qty())
 
-    def sell_limit_order(self, sell_order: Order):
+                print("Trade, price: {}, qty: {}".format(trade_price, trade_qty))
+
+                if (trade_qty):
+                    self.partial_trade(
+                        sell_order_id=sell_order.get_id(),
+                        buy_order_id=buy_order.get_id()
+                    )
+                    return False
+                else:
+                    # order completely executed
+                    return True
+                
+
+        return False
+
+    def sell_limit_order(self, id: int) -> bool:
+        sell_order = self.get_order(id)
         for buy_order in self.book.get_buy_order():
             if (
                 # this order is executed if the buy price is equal to or greater than the desired sell price
@@ -203,7 +232,8 @@ class MatchingMachine:
                 print("Trade, price: {}, qty: {}".format(price, sell_order.qty))
                 return
 
-    def buy_market_order(self, buy_order: Order):
+    def buy_market_order(self, id: int) -> bool:
+        buy_order = self.get_order(id)
         # ordering the array based on price
         lower_price = self.book.get_sell_order()
         lower_price.sort(key = lambda order : order.price)
@@ -217,7 +247,8 @@ class MatchingMachine:
                 print("Trade, price: {}, qty: {}".format(sell_order.price, buy_order.qty))
                 return
 
-    def sell_market_order(self, sell_order: Order):
+    def sell_market_order(self, id: int) -> bool:
+        _order = self.get_order(id)
         # ordering the array based on price
         highest_price = self.book.get_buy_order()
         highest_price.sort(reverse=True, key = lambda order : order.price)
@@ -232,6 +263,8 @@ class MatchingMachine:
                 # trade 
                 print("Trade, price: {}, qty: {}".format(buy_order.price, sell_order.qty))
                 return
+
+    def get_sell_orders(self)
 
     def print_book(self):
         print(self.book)
@@ -249,6 +282,22 @@ class MatchingMachine:
     def change_order(self, id: int, new_infos: dict):
         self.book.change_order(id, new_infos)
 
+    def order_exists(self, id: int) -> bool:
+        return self.book.order_exists(id)
+
+    def try_execute_order(self, id: int) -> bool:
+        if (self.order_exists(id)):
+            order = self.get_order(id)
+            # verifying if is a buy order
+            if (order.is_buy_order()):
+                if (order.is_limit_order()):
+                    for sell_order_id in self.get
+
+        else:
+            return False
+
+        return True
+
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
@@ -256,15 +305,13 @@ teste = machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 1
 
 machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 20})
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 9, 'qty': 20})
 
-# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 20})
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 20})
 
-# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
+machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
 
-machine.print_book()
-machine.change_order(teste.id, {'price': 1200, 'qty': 10})
-machine.print_book()
+machine.try_execute_order(0)
 # print(current_order)
 
 # print(primary_book.get_buy_order())
