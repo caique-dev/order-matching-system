@@ -2,8 +2,7 @@
 # TODO Verify the max id in get_buy_order
 # TODO implement the change order method
 # TODO implement input handling
-# TODO test the new order storage mode
-
+# TODO implement the 
 # TODO Rewiew the str of book
 
 class Order:
@@ -34,26 +33,18 @@ class Order:
         self.qty = order_dict['qty']
     
     def __str__(self):
-        if (self.type == 'limit'):
-            ret = 'ID: {}, type: {}, side: {}, price: {}, quantity: {}'.format(
-                self.id,
-                self.type,
-                self.side,
-                self.price,
-                self.qty
-            )
-        else: 
-            ret = 'ID: {},type: {}, side: {}, quantity: {}'.format(
-                self.id,
-                self.type,
-                self.side,
-                self.qty
+        print_msg = '(ID: {}) {} {} {} @ {}'.format(
+                self.get_id(),
+                self.get_type(),
+                self.get_side(),
+                self.get_qty(),
+                self.get_price() if self.type == 'limit' else ''
             )
 
-        return ret
+        return print_msg
     
     def __repr__(self):
-        return '{} {} {} {}'.format(self.type, self.side, self.price if self.type == 'limit' else '', self.qty)
+        return '(#{}) {} {} {} {}'.format(self.id, self.type, self.side, self.price if self.type == 'limit' else '', self.qty)
     
     def set_id(self, id: int):
         self.id = id
@@ -102,39 +93,25 @@ class OrderBook:
             order.set_id(self.get_last_order_id())
             self.buy_side_dict[order.get_id()] = order
             self.incremment_order_index()
-
-            print_msg = 'Order created: (ID: {}) {} {} {} @ {}'.format(
-                order.get_id(),
-                order.get_type(),
-                order.get_side(),
-                order.get_qty(),
-                order.get_price()
-            )
         else:
             order.set_id(self.get_last_order_id())
             self.sell_side_dict[order.get_id()] = order
             self.incremment_order_index()
 
-            print_msg = 'Order created: (ID: {}) {} {} {}'.format(
-                order.get_id(),
-                order.get_type(),
-                order.get_side(),
-                order.get_qty(),
-            )
-        
         self.all_orders_dict[order.get_id()] = order
-        print(print_msg)
+        print('Created the order: ', order)
 
     def remove_order(self):
         pass
 
     def change_order(self, id: int, new_infos: list):
-        if (
-            id in self.get_sell_order() or
-            id in self.get_buy_order()
-        ):
-            order = 
-            if ()
+        # if (
+        #     id in self.get_sell_order() or
+        #     id in self.get_buy_order()
+        # ):
+        #     order = 
+        #     if ()
+        pass
 
     def get_last_order_id(self):
         return self.order_index
@@ -144,21 +121,21 @@ class OrderBook:
 
     def __str__(self):
         _str = 'Buy Side: \n'
-        for order in self.buy_side_vec:
-            _str += str(order) + '\n'
+        for order in self.buy_side_dict:
+            _str += str(self.buy_side_dict[order]) + '\n'
 
         _str += 'Sell Side: \n'
-        for order in self.sell_side_vec:
-            _str += str(order) + '\n'
+        for order in self.sell_side_dict:
+            _str += str(self.sell_side_dict[order]) + '\n'
         
         return _str
 
-    def get_order(self, id: int):
-        for elemento in self.buy_side_vec:
-            if (elemento.id == id):
-                return elemento
-
+    def get_order(self, id: int) -> Order:
+        if (id in self.all_orders_dict):
+            return self.all_orders_dict[id]
+        
         return None
+        
 
 class MatchingMachine:
     def __init__(self, book: OrderBook):
@@ -225,20 +202,23 @@ class MatchingMachine:
     def print_book(self):
         print(self.book)
 
+    def get_order(self, id: int):
+        return self.book.get_order(id)
+
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
 machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10})
 
-machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
+# machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 20})
+# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 20})
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 20})
+# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 20})
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
+# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 20})
 
-machine.print_book()
+print(primary_book)
 # print(current_order)
 
 # print(primary_book.get_buy_order())
