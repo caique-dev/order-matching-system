@@ -8,35 +8,44 @@
 # TODO implement multiples orders in the same line
 # TODO implement error treatment
 
+class Utilities:
+    @staticmethod
+    def print_error(msg: str):
+        print('>> Error: ' + msg)
+
+    @staticmethod
+    def get_input(msg: str):
+        return input('<< ' + msg + ': ')
+
 class Order:
     def __init__(self, order_dict: dict):
         self.id = None
 
         if (order_dict['type'] != 'market' and order_dict['type'] != 'limit'):
-                print('This order has an invalid type.')
+                Utilities.print_error('This order has an invalid type.')
                 return None
         self.type = order_dict['type']
 
         if (order_dict['side'] != 'buy' and order_dict['side'] != 'sell'):
-                print('This order has an invalid "side".')
+                Utilities.print_error('This order has an invalid "side".')
                 return None
         self.side = order_dict['side']
         
         if (self.type == "limit"):
             if (order_dict['price'] <= 0):
-                print('This order has an invalid price.')
+                Utilities.print_error('This order has an invalid price.')
                 return None
 
             self.price = order_dict['price']
 
         if (order_dict['qty'] <= 0):
-                print('This order has an invalid quantity.')
+                Utilities.print_error('This order has an invalid quantity.')
                 return None
         
         self.qty = order_dict['qty']
     
     def __str__(self):
-        print_msg = '(ID: {}) {} {} {}{}'.format(
+        print_msg = '>> (ID: {}) {} {} {}{}'.format(
                 self.get_id(),
                 self.get_type(),
                 self.get_side(),
@@ -69,7 +78,7 @@ class Order:
             self.qty = qty
             return
         
-        print('The new quantity is invalid.')
+        Utilities.print_error('The new quantity is invalid.')
 
     def get_side(self):
         return self.side
@@ -82,7 +91,7 @@ class Order:
             self.price = price
             return
         
-        print('The new price is invalid.')
+        Utilities.print_error('The new price is invalid.')
 
     def get_type(self):
         return self.type
@@ -113,13 +122,13 @@ class OrderBook:
             self.incremment_order_index()
 
         self.all_orders_dict[order.get_id()] = order
-        print('Created the order: ', order)
+        print('>> Created the order: ', order)
 
     def cancel_order(self, id: int) -> Order:
         order = self.get_order(id)
 
         if not (order):
-            print('This is an invalid ID.')
+            Utilities.print_error('This order not exists.')
         else:
             # removing the order from the general dict
             del self.all_orders_dict[id]
@@ -132,27 +141,28 @@ class OrderBook:
         del self.sell_side_dict[id]
         return order
 
-    def change_order(self, id: int, new_price: int = 0, new_qty: int = 0) -> bool:
-        if not (id in self.get_all_orders()):
-            print('This is an invalid ID.')
+    def change_order(self, id: int, new_price: str = '', new_qty: str = '', remove_priority: bool = True) -> bool:
+        if not (self.order_exists(id)):
+            Utilities.print_error('This order not exists.')
             return False
         else: 
             order = self.get_order(id)
 
             # updating the order's info
             if (new_price):
-                order.set_price(new_price)
+                order.set_price(int(new_price))
             if (new_qty):
-                order.set_qty(new_qty)
+                order.set_qty(int(new_qty))
             
             # removing the priority
-            self.cancel_order(order.id)       
-            self.all_orders_dict[order.id] = order
+            if (remove_priority):
+                self.cancel_order(order.id)       
+                self.all_orders_dict[order.id] = order
 
-            if (order.is_buy_order()):
-                self.buy_side_dict[order.id] = order
-            else:
-                self.sell_side_dict[order.id] = order
+                if (order.is_buy_order()):
+                    self.buy_side_dict[order.id] = order
+                else:
+                    self.sell_side_dict[order.id] = order
             
             return True
 
@@ -179,12 +189,11 @@ class OrderBook:
     def get_order(self, id: int) -> Order:
         if (id in self.all_orders_dict):
             return self.all_orders_dict[id]
+        
+        return None
     
     def get_all_orders(self) -> dict:
         return self.all_orders_dict
-
-
-        return None
 
     def get_buy_orders(self) -> dict:
         return (self.buy_side_dict)
@@ -235,9 +244,10 @@ class MatchingMachine:
             # the sell order has been filled
             new_buy_qty = buy_qty - sell_qty
 
-            self.change_order(
+            self.book.change_order(
                 buy_order.get_id(), 
-                new_qty = new_buy_qty
+                new_qty = new_buy_qty,
+                remove_priority=False
             )
 
             filled_order = self.cancel_order(sell_order.get_id())
@@ -245,9 +255,10 @@ class MatchingMachine:
             # buy order has been filled
             new_sell_qty = sell_qty - buy_qty
 
-            self.change_order(
+            self.book.change_order(
                 sell_order.get_id(), 
-                new_qty = new_sell_qty
+                new_qty = new_sell_qty,
+                remove_priority=False
             )
 
             filled_order = self.cancel_order(buy_order.get_id())
@@ -264,7 +275,7 @@ class MatchingMachine:
                 trade_price = min(sell_order.price, buy_order.price)
                 trade_qty = buy_order.get_qty() if (sell_order.get_qty() >= buy_order.get_qty()) else (sell_order.get_qty())
 
-                print("Trade, price: {}, qty: {}".format(trade_price, trade_qty))
+                print(">> Trade, price: {}, qty: {}".format(trade_price, trade_qty))
 
                 # partial trade
                 if (buy_order.get_qty() != sell_order.get_qty()):
@@ -288,7 +299,7 @@ class MatchingMachine:
                 trade_price = max(sell_order_target.get_price(), buy_order.get_price())
                 trade_qty = sell_order_target.get_qty() if (sell_order_target.get_qty <= buy_order.get_qty()) else (buy_order.get_qty())
 
-                print("Trade, price: {}, qty: {}".format(trade_price, trade_qty))
+                print(">> Trade, price: {}, qty: {}".format(trade_price, trade_qty))
 
                 # partial trade
                 if (buy_order.get_qty() != sell_order_target.get_qty()):
@@ -325,7 +336,7 @@ class MatchingMachine:
             else:
                 trade_qty = sell_order.get_qty()
             
-            print_msg = 'Trade, price: {}, qty: {}'.format(trade_qty, trade_price)
+            print_msg = '>> Trade, price: {}, qty: {}'.format(trade_qty, trade_price)
             print(print_msg)
 
             # partial trade
@@ -362,7 +373,7 @@ class MatchingMachine:
             else:
                 trade_qty = buy_order.get_qty()
             
-            print_msg = 'Trade, price: {}, qty: {}'.format(trade_qty, trade_price)
+            print_msg = '>> Trade, price: {}, qty: {}'.format(trade_qty, trade_price)
             print(print_msg)
 
             # partial trade
@@ -390,7 +401,7 @@ class MatchingMachine:
     def cancel_order(self, id: int) -> Order:
         order = self.book.cancel_order(id)
         if (order):
-            print('Order cancelled: ', order)
+            print('>> Order cancelled: ', order)
 
         return order
 
@@ -421,35 +432,62 @@ class MatchingMachine:
         return True
 
     def manual_input_handler(self):
-        print('Enter your orders or commands line by line or comma separated:')
-        prompt_input_arr = input().split(',')
+        print('>> Enter your orders/commands line by line or comma separated:')
+        while (True):
+            prompt_input_arr = input('<< ').split(',')
 
-        for command in prompt_input_arr:
-            if ('print' in command):
-                pass
-            elif ('cancel' in command):
-                pass
-            elif ('change' in command):
-                pass
-            elif ('exit' in command):
-                pass
-            elif ('help' in command):
-                pass
-            else:
-                result = self.add_order(command)
+            for command in prompt_input_arr:
+                if ('print' in command):
+                    print(self.book)
                 
-                if not (result):
-                    self.error_handler()
+                elif ('cancel' in command):
+                    cmd_arr = command.split(' ')
+                    if (cmd_arr[2].isdigit()):
+                        self.book.cancel_order(int(cmd_arr[2]))
+                    else:
+                        Utilities.print_error('Invalid ID.')
+                
+                elif ('change' in command):
+                    cmd_arr = command.split(' ')
+                    if (cmd_arr[-1].isdigit()):
+                        if (self.book.order_exists(int(cmd_arr[-1]))):
+                            order_id = int(cmd_arr[-1])
+                        else:
+                            Utilities.print_error('This order not exists.')
+                    else:
+                        Utilities.print_error('This ID is invalid')
 
-    def error_handler(self):
-        print('trouble')
+                    new_price = Utilities.get_input('Enter the new price (press Enter to keep it unchanged)')            
+                    new_qty = Utilities.get_input('Enter the new quantity (press Enter to keep it unchanged)')            
 
+                    self.book.change_order(
+                        order_id,
+                        new_price=new_price,
+                        new_qty=new_qty
+                    ) 
+                
+                elif ('exit' in command):
+                    print('>> Ending the program...')
+                    break
+                
+                elif ('help' in command):
+                    pass
+                elif ('skip' in command):
+                    pass
+                else:
+                    result = self.add_order(command)
+                    
+                    if (result):
+                        self.try_execute_order(result.get_id())
+                    else:
+                        Utilities.print_error("This command: ({}), is invalid and has been ignored.".format(command))
 
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10})
+primary_book.add_order(Order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10}))
 
+machine.manual_input_handler()
 # machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
 # machine.add_order({'type': 'limit', 'side': 'buy', 'price': 9, 'qty': 20})
@@ -458,7 +496,6 @@ machine = MatchingMachine(primary_book)
 
 # machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 15})
 
-machine.manual_input_handler()
 # print(current_order)
 
 # print(primary_book.get_buy_order())
