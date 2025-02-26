@@ -3,6 +3,8 @@
 # TODO complete the unified trade order method
 # TODO implement input handling
 # TODO implement the order executor
+# TODO remove redundance :( 
+# TODO Complete the implementation of the filled orders storage
 
 class Order:
     def __init__(self, order_dict: dict):
@@ -32,18 +34,24 @@ class Order:
         self.qty = order_dict['qty']
     
     def __str__(self):
-        print_msg = '(ID: {}) {} {} {} {}'.format(
+        print_msg = '(ID: {}) {} {} {}{}'.format(
                 self.get_id(),
                 self.get_type(),
                 self.get_side(),
                 self.get_qty(),
-                "@ " + str(self.get_price()) if self.type == 'limit' else ''
+                " @ " + str(self.get_price()) if self.type == 'limit' else ''
             )
 
         return print_msg
     
     def __repr__(self):
-        return '(#{}) {} {} {} {}'.format(self.id, self.type, self.side, self.price if self.type == 'limit' else '', self.qty)
+        return '(#{}) {} {} {} {}'.format(
+            self.id,
+            self.type,
+            self.side,
+            (self.price) if (self.type == 'limit') else (''),
+            self.qty
+        )
     
     def set_id(self, id: int):
         self.id = id
@@ -90,6 +98,7 @@ class OrderBook:
         self.buy_side_dict = {}
         self.sell_side_dict = {}
         self.all_orders_dict = {}
+        self.filled_orders_dict = {}
 
     def add_order(self, order: Order):
         if (order.is_buy_order()):
@@ -121,27 +130,32 @@ class OrderBook:
         del self.sell_side_dict[id]
         return order
 
-    def change_order(self, id: int, new_infos: dict):
+    def change_order(self, id: int, new_price: int = 0, new_qty: int = 0) -> bool:
         if not (id in self.get_all_orders()):
             print('This is an invalid ID.')
-            return None
+            return False
         else: 
             order = self.get_order(id)
 
             # updating the order's info
-            if ('price' in new_infos):
-                order.set_price(new_infos['price'])
-            if ('qty' in new_infos):
-                order.set_qty(new_infos['qty'])
+            if (new_price):
+                order.set_price(new_price)
+            if (new_qty):
+                order.set_qty(new_qty)
             
             # removing the priority
-            self.cancel_order(order.id)             
+            self.cancel_order(order.id)       
             self.all_orders_dict[order.id] = order
 
             if (order.is_buy_order()):
                 self.buy_side_dict[order.id] = order
             else:
                 self.sell_side_dict[order.id] = order
+            
+            return True
+
+    def add_filled_order(self, order_id: int):
+        self.filled_orders_dict[order_id] = self.get_order(order_id)
 
     def get_last_order_id(self):
         return self.order_index
@@ -190,9 +204,38 @@ class MatchingMachine:
         
         return order_obj
 
+    def add_filled_order(self, order_id: int):
+        self.book.add_filled_order(order_id)
+
     def partial_trade(self, sell_order_id: int, buy_order_id: int):
-        print('partial trade!')
-        pass
+        sell_order = self.get_order(sell_order_id)
+        sell_qty = sell_order.get_qty()
+        
+        buy_order = self.get_order(buy_order_id)
+        buy_qty = buy_order.get_qty()
+
+        if (sell_qty < buy_qty):
+            # the sell order has been filled
+            new_buy_qty = buy_qty - sell_qty
+
+            self.change_order(
+                buy_order.get_id(), 
+                new_qty = new_buy_qty
+            )
+
+            filled_order = self.cancel_order(sell_order.get_id())
+        else:
+            # buy order has been filled
+            new_sell_qty = sell_qty - buy_qty
+
+            self.change_order(
+                sell_order.get_id(), 
+                new_qty = new_sell_qty
+            )
+
+            filled_order = self.cancel_order(buy_order.get_id())
+
+        self.add_filled_order(filled_order.get_id())
 
     def buy_limit_order(self, id: int) -> bool:
         buy_order = self.get_order(id)
@@ -309,7 +352,7 @@ class MatchingMachine:
             if (sell_order_target.get_qty() != buy_order.get_qty()):
                 self.partial_trade(
                     buy_order_id = buy_order.get_id(),
-                    sell_order_id = sell_order_target.get_id
+                    sell_order_id = sell_order_target.get_id()
                 )
                 return False
             else:
@@ -334,8 +377,8 @@ class MatchingMachine:
 
         return order
 
-    def change_order(self, id: int, new_infos: dict):
-        self.book.change_order(id, new_infos)
+    def change_order(self, id: int, new_price: int = 0, new_qty: int = 0) -> bool:
+        self.book.change_order(id, new_price, new_qty)
 
     def order_exists(self, id: int) -> bool:
         return self.book.order_exists(id)
@@ -347,20 +390,16 @@ class MatchingMachine:
             # make trade
             if (order.is_buy_order()):
                 if (order.is_limit_order()):
-                    partial_trade = self.buy_limit_order(id)
+                    self.buy_limit_order(id)
                 else:
-                    partial_trade = self.buy_market_order(id)
+                    self.buy_market_order(id)
             else:
                 if (order.is_limit_order()):
-                    partial_trade = self.sell_limit_order(id)
+                    self.sell_limit_order(id)
                 else:
-                    partial_trade = self.sell_market_order(id)
+                    self.sell_market_order(id)
         else:
             return False
-        
-        # partial trade
-        if (partial_trade):
-            self.partial_trade()
 
         return True
 
