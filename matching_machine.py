@@ -1,22 +1,18 @@
-# TODO implement the input handler
-# TODO keep the priority in partial trade
-# TODO complete the unified trade order method
-# TODO implement input handling
-# TODO implement the order executor
 # TODO remove redundance :( 
 # TODO Complete the implementation of the filled orders storage
-# TODO implement multiples orders in the same line
-# TODO implement error treatment
 
 class Utilities:
     @staticmethod
     def print_error(msg: str):
-        print('>> Error: ' + msg)
+        Utilities.print_message('Error: ' + msg)
 
     @staticmethod
     def get_input(msg: str):
         return input('<< ' + msg + ': ')
 
+    @staticmethod
+    def print_message(msg: str):
+        print('>> ' + msg)
 class Order:
     def __init__(self, order_dict: dict):
         self.id = None
@@ -45,12 +41,12 @@ class Order:
         self.qty = order_dict['qty']
     
     def __str__(self):
-        print_msg = '>> (ID: {}) {} {} {}{}'.format(
+        print_msg = '(ID: {}) {} {} {}{}'.format(
                 self.get_id(),
                 self.get_type(),
                 self.get_side(),
                 self.get_qty(),
-                " @ " + str(self.get_price()) if self.type == 'limit' else ''
+                " @ $" + str(self.get_price()) if self.type == 'limit' else ''
             )
 
         return print_msg
@@ -122,7 +118,7 @@ class OrderBook:
             self.incremment_order_index()
 
         self.all_orders_dict[order.get_id()] = order
-        print('>> Created the order: ', order)
+        Utilities.print_message('Created the order: {}'.format(order))
 
     def cancel_order(self, id: int) -> Order:
         order = self.get_order(id)
@@ -271,11 +267,16 @@ class MatchingMachine:
             sell_order = self.get_order(sell_order)
             # this order is executed if the sell price is equal to or lower than the desired buy price
             if (sell_order.get_price() <= buy_order.get_price()):
-                # trade 
+                # getting the lowest price between the orders 
                 trade_price = min(sell_order.price, buy_order.price)
-                trade_qty = buy_order.get_qty() if (sell_order.get_qty() >= buy_order.get_qty()) else (sell_order.get_qty())
 
-                print(">> Trade, price: {}, qty: {}".format(trade_price, trade_qty))
+                # setting the quantity that was traded
+                if (sell_order.get_qty() >= buy_order.get_qty()):
+                    trade_qty = buy_order.get_qty()  
+                else: 
+                    trade_qty = sell_order.get_qty()
+
+                Utilities.print_message('Trade, price: {}, qty: {}'.format(trade_price, trade_qty))
 
                 # partial trade
                 if (buy_order.get_qty() != sell_order.get_qty()):
@@ -295,11 +296,16 @@ class MatchingMachine:
 
             # this order is executed if the buy price is equal to or greater than the desired sell price
             if (buy_order.get_price() >= sell_order_target.get_price()):
-                # trade 
+                # getting the highest value between the orders 
                 trade_price = max(sell_order_target.get_price(), buy_order.get_price())
-                trade_qty = sell_order_target.get_qty() if (sell_order_target.get_qty <= buy_order.get_qty()) else (buy_order.get_qty())
 
-                print(">> Trade, price: {}, qty: {}".format(trade_price, trade_qty))
+                # setting the quantity that was traded
+                if (sell_order_target.get_qty() <= buy_order.get_qty()):
+                    trade_qty = sell_order_target.get_qty()
+                else: 
+                    trade_qty = buy_order.get_qty()
+
+                Utilities.print_message('Trade, price: {}, qty: {}'.format(trade_price, trade_qty))
 
                 # partial trade
                 if (buy_order.get_qty() != sell_order_target.get_qty()):
@@ -336,8 +342,7 @@ class MatchingMachine:
             else:
                 trade_qty = sell_order.get_qty()
             
-            print_msg = '>> Trade, price: {}, qty: {}'.format(trade_qty, trade_price)
-            print(print_msg)
+            Utilities.print_message('Trade, price: {}, qty: {}'.format(trade_qty, trade_price))
 
             # partial trade
             if (buy_order_target.get_qty() != sell_order.get_qty()):
@@ -373,8 +378,7 @@ class MatchingMachine:
             else:
                 trade_qty = buy_order.get_qty()
             
-            print_msg = '>> Trade, price: {}, qty: {}'.format(trade_qty, trade_price)
-            print(print_msg)
+            Utilities.print_message('Trade, price: {}, qty: {}'.format(trade_qty, trade_price))
 
             # partial trade
             if (sell_order_target.get_qty() != buy_order.get_qty()):
@@ -401,7 +405,7 @@ class MatchingMachine:
     def cancel_order(self, id: int) -> Order:
         order = self.book.cancel_order(id)
         if (order):
-            print('>> Order cancelled: ', order)
+            Utilities.print_message('Order cancelled: ')
 
         return order
 
@@ -432,7 +436,7 @@ class MatchingMachine:
         return True
 
     def manual_input_handler(self):
-        print('>> Enter your orders/commands line by line or comma separated:')
+        Utilities.print_message('Enter your orders/commands line by line or comma separated:')
         while (True):
             prompt_input_arr = input('<< ').split(',')
 
@@ -459,15 +463,19 @@ class MatchingMachine:
 
                     new_price = Utilities.get_input('Enter the new price (press Enter to keep it unchanged)')            
                     new_qty = Utilities.get_input('Enter the new quantity (press Enter to keep it unchanged)')            
-
+                    
+                    old_order = self.book.get_order(order_id)
+                    # Changing the order without losing its priority
                     self.book.change_order(
                         order_id,
                         new_price=new_price,
                         new_qty=new_qty
-                    ) 
-                
+                    )
+                    new_order = self.get_order(order_id)
+                    Utilities.print_message('Order changed: {} -> {}'.format(old_order, new_order))
+
                 elif ('exit' in command):
-                    print('>> Ending the program...')
+                    Utilities.print_message('Ending the program...')
                     break
                 
                 elif ('help' in command):
@@ -480,12 +488,12 @@ class MatchingMachine:
                     if (result):
                         self.try_execute_order(result.get_id())
                     else:
-                        Utilities.print_error("This command: ({}), is invalid and has been ignored.".format(command))
+                        Utilities.print_error('"{}", is an invalid and has been ignored.'.format(command))
 
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-primary_book.add_order(Order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10}))
+primary_book.add_order(Order({'type': 'limit', 'side': 'buy', 'price': 11, 'qty': 10}))
 
 machine.manual_input_handler()
 # machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
