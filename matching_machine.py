@@ -1,10 +1,12 @@
-# TODO remove prints from OrderBook methods
-# TODO complete the trade methods (partial trade)
+# TODO implement the input handler
+# TODO keep the priority in partial trade
 # TODO complete the unified trade order method
 # TODO implement input handling
 # TODO implement the order executor
 # TODO remove redundance :( 
 # TODO Complete the implementation of the filled orders storage
+# TODO implement multiples orders in the same line
+# TODO implement error treatment
 
 class Order:
     def __init__(self, order_dict: dict):
@@ -197,8 +199,23 @@ class MatchingMachine:
     def __init__(self, book: OrderBook):
         self.book = book
 
-    def add_order(self, order: dict) -> Order:
-        order_obj = Order(order)
+    def add_order(self, order: str) -> Order:
+        order_arr = (order.strip()).split(' ')
+        if (len(order_arr) == 4):
+            labels = ['type', 'side', 'price', 'qty']
+        elif (len(order_arr) == 3):
+            labels = ['type', 'side', 'qty']
+        else:
+            return None
+
+        order_dict = {
+            pair[0]:(
+                int(pair[1]) if pair[1].isdigit() else pair[1]
+            ) 
+            for pair in zip(labels, order_arr)
+        }
+
+        order_obj = Order(order_dict)
         if (order_obj):
             self.book.add_order(order_obj)
         
@@ -403,20 +420,45 @@ class MatchingMachine:
 
         return True
 
+    def manual_input_handler(self):
+        print('Enter your orders or commands line by line or comma separated:')
+        prompt_input_arr = input().split(',')
+
+        for command in prompt_input_arr:
+            if ('print' in command):
+                pass
+            elif ('cancel' in command):
+                pass
+            elif ('change' in command):
+                pass
+            elif ('exit' in command):
+                pass
+            elif ('help' in command):
+                pass
+            else:
+                result = self.add_order(command)
+                
+                if not (result):
+                    self.error_handler()
+
+    def error_handler(self):
+        print('trouble')
+
+
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10})
+# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 10, 'qty': 10})
 
-machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
+# machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 9, 'qty': 20})
+# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 9, 'qty': 20})
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 19})
+# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 19})
 
-machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 15})
+# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 15})
 
-machine.try_execute_order(1)
+machine.manual_input_handler()
 # print(current_order)
 
 # print(primary_book.get_buy_order())
