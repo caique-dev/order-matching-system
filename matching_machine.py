@@ -125,13 +125,15 @@ class OrderBook:
     def get_bid_price() -> float:
         return OrderBook.bid_price
     
-    def update_bid_price(self, value: float):
+    @staticmethod
+    def update_bid_price(value: float):
         OrderBook.bid_price = value
 
     def get_offer_price() -> float:
         return OrderBook.offer_price
     
-    def update_offer_price(self, value: float):
+    @staticmethod
+    def update_offer_price(value: float):
         OrderBook.offer_price = value
 
     def __init__(self):
@@ -151,6 +153,27 @@ class OrderBook:
             order.set_id(self.get_last_order_id())
             self.sell_side_dict[order.get_id()] = order
             self.incremment_order_index()
+
+        # updating the offer/bid price
+        if (order.is_limit_order()):
+            order_price = order.get_price()
+
+            if (
+                order.is_buy_order() and
+                (
+                    order_price > OrderBook.get_bid_price()
+                )
+            ):
+                OrderBook.update_bid_price(order_price)
+            
+            if (
+                (not order.is_buy_order()) and
+                (
+                    order_price < OrderBook.get_offer_price()
+                )
+            ):
+                OrderBook.update_offer_price(order_price)
+
 
         self.all_orders_dict[order.get_id()] = order
         Utilities.print_message('Created the order: {}'.format(order))
@@ -241,21 +264,45 @@ class MatchingMachine:
 
     def add_order(self, order: str) -> Order:
         order_arr = (order.strip()).split(' ')
+
+        # orders atributes
         if (len(order_arr) == 4):
-            labels = ['type', 'side', 'price', 'qty']
+            # join the pegged orders atributes
+            if ('peg' in order_arr[0]):
+                order_dict = {
+                    'type': order_arr[0],
+                    'side': order_arr[2],
+                    'qty': int(order_arr[3])
+                }
+
+                pegged_type = order_arr[1] 
+                if (pegged_type == 'bid'):
+                    order_dict['price'] = OrderBook.get_bid_price()
+                else:
+                    order_dict['price'] = OrderBook.get_offer_price()
+
+            # join the limit order atributes
+            else:
+                order_dict = {
+                    'type': order_arr[0],
+                    'side': order_arr[1],
+                    'price': float(order_arr[2]),
+                    'qty': int(order_arr[3])
+                }
+        
+        # join the market order atributes
         elif (len(order_arr) == 3):
-            labels = ['type', 'side', 'qty']
+            order_dict = {
+                'type': order_arr[0],
+                'side': order_arr[1],
+                'price': float(order_arr[2]),
+                'qty': int(order_arr[3])
+            }
         else:
             return None
-
-        order_dict = {
-            pair[0]:(
-                int(pair[1]) if pair[1].isdigit() else pair[1]
-            ) 
-            for pair in zip(labels, order_arr)
-        }
-
+        
         order_obj = Order(order_dict)
+
         if (order_obj):
             self.book.add_order(order_obj)
         
@@ -545,6 +592,7 @@ class MatchingMachine:
                 elif ('skip' in command):
                     pass
 
+                # create a new order
                 else:
                     order = self.add_order(command)
                     
