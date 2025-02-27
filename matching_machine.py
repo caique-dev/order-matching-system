@@ -20,16 +20,27 @@ class Order:
     def __init__(self, order_dict: dict):
         self.id = None
 
-        if (order_dict['type'] != 'market' and order_dict['type'] != 'limit'):
-                Utilities.print_error('This order has an invalid type.')
-                return None
-        self.type = order_dict['type']
+        # setting type
+        if (
+            order_dict['type'] == 'market' or 
+            order_dict['type'] == 'limit' or
+            'peg' in order_dict['type']
+        ):
+            if ('peg' in order_dict['type']):
+                self.type = 'pegged'
+            else:
+                self.type = order_dict['type']
+        else:
+            Utilities.print_error('This order has an invalid type.')
+            return None
 
+        # setting side
         if (order_dict['side'] != 'buy' and order_dict['side'] != 'sell'):
                 Utilities.print_error('This order has an invalid "side".')
                 return None
         self.side = order_dict['side']
         
+        # setting price
         if (self.type == "limit"):
             if (order_dict['price'] <= 0):
                 Utilities.print_error('This order has an invalid price.')
@@ -37,13 +48,14 @@ class Order:
 
             self.price = order_dict['price']
 
+        # setting quantity        
         if (order_dict['qty'] <= 0):
                 Utilities.print_error('This order has an invalid quantity.')
                 return None
         
         self.qty = order_dict['qty']
     
-    def __str__(self):
+    def __str__(self) -> str:
         print_msg = '(ID: {}) {} {} {}{}'.format(
                 self.get_id(),
                 self.get_type(),
@@ -66,33 +78,37 @@ class Order:
     def set_id(self, id: int):
         self.id = id
 
-    def get_id(self):
+    def get_id(self) -> int:
         return self.id
 
-    def get_qty(self):
+    def get_qty(self) -> int:
         return self.qty
 
-    def set_qty(self, qty):
-        if (qty > 0):
+    def set_qty(self, qty: int):
+        if (qty > 0 and qty.is_integer()):
             self.qty = qty
-            return
-        
-        Utilities.print_error('The new quantity is invalid.')
+        else:        
+            Utilities.print_error('The new quantity is invalid.')
 
-    def get_side(self):
+    def get_side(self) -> str:
         return self.side
 
     def get_price(self):
-        return self.price
+        if (self.type == 'pegged'):
+            if (self.side == 'buy'):
+                return OrderBook.get_bid_price()
+            else:
+                return OrderBook.get_offer_price()
+        else:
+            return self.price
 
-    def set_price(self, price):
+    def set_price(self, price: float):
         if (price > 0):
             self.price = price
-            return
-        
-        Utilities.print_error('The new price is invalid.')
+        else: 
+            Utilities.print_error('The new price is invalid.')
 
-    def get_type(self):
+    def get_type(self) -> str:
         return self.type
 
     def is_buy_order(self) -> bool:
@@ -102,6 +118,22 @@ class Order:
         return (self.type == 'limit')
 
 class OrderBook:
+    # static atributes for pegged orders
+    bid_price = 0 # highest buy price
+    offer_price = 0 # lowest sell price
+
+    def get_bid_price() -> float:
+        return OrderBook.bid_price
+    
+    def update_bid_price(self, value: float):
+        OrderBook.bid_price = value
+
+    def get_offer_price() -> float:
+        return OrderBook.offer_price
+    
+    def update_offer_price(self, value: float):
+        OrderBook.offer_price = value
+
     def __init__(self):
         self.order_index = 0
         
