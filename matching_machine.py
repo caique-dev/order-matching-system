@@ -353,9 +353,13 @@ class MatchingMachine:
         buy_order_target = self.get_order(id)
         for sell_order in self.book.get_sell_orders():
             sell_order = self.get_order(sell_order)
-            
+            sell_order_price = sell_order.get_price()
             # this order is executed if the sell price is equal to or lower than the desired buy price
-            if (sell_order.get_price() <= buy_order_target.get_price()):
+            if (
+                sell_order_price <= buy_order_target.get_price() and
+                # verifying if the pegged has a price
+                sell_order_price > 0
+            ):
                 # getting the lowest price between the orders 
                 trade_price = min(sell_order.price, buy_order_target.price)
 
@@ -387,6 +391,7 @@ class MatchingMachine:
         sell_order_target = self.get_order(id)
         for buy_order_id in self.get_buy_orders():
             buy_order = self.get_order(buy_order_id)
+            buy_order_price = buy_order.
 
             # this order is executed if the buy price is equal to or greater than the desired sell price
             if (buy_order.get_price() >= sell_order_target.get_price()):
