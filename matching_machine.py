@@ -1,6 +1,7 @@
 # TODO remove redundance :( 
 # TODO create pause/pause
 # TODO Complete the implementation of the filled orders storage
+# TODO pegged orders
 
 class Utilities:
     @staticmethod
@@ -262,7 +263,7 @@ class MatchingMachine:
                 remove_priority=False
             )
             # removing the filled order of the book
-            filled_order = self.cancel_order(buy_order.get_id())
+            filled_order = self.book.cancel_order(buy_order.get_id())
 
         self.book.add_filled_order(filled_order.get_id())
 
