@@ -42,18 +42,24 @@ class Order:
         
         # setting price
         if (self.type == "limit"):
-            if (order_dict['price'] <= 0):
+            if (
+                order_dict['price'].isdigit() and
+                float(order_dict['price']) > 0
+            ):
+                self.price = float(order_dict['price'])
+            else:
                 Utilities.print_error('This order has an invalid price.')
                 return None
 
-            self.price = order_dict['price']
-
         # setting quantity        
-        if (order_dict['qty'] <= 0):
-                Utilities.print_error('This order has an invalid quantity.')
-                return None
-        
-        self.qty = order_dict['qty']
+        if (
+            order_dict['qty'].isdigit() and
+            int(order_dict['qty']) > 0
+        ):
+            self.qty = int(order_dict['qty'])
+        else:
+            Utilities.print_error('This order has an invalid quantity.')
+            return None
     
     def __str__(self) -> str:
         print_msg = '(ID: {}) {} {} {}{}'.format(
@@ -61,7 +67,7 @@ class Order:
                 self.get_type(),
                 self.get_side(),
                 self.get_qty(),
-                " @ $" + str(self.get_price()) if self.type == 'limit' else ''
+                " @ $" + str(self.get_price()) if self.type != 'market' else ''
             )
 
         return print_msg
@@ -93,7 +99,7 @@ class Order:
     def get_side(self) -> str:
         return self.side
 
-    def get_price(self):
+    def get_price(self) -> float:
         if (self.type == 'pegged'):
             if (self.side == 'buy'):
                 return OrderBook.get_bid_price()
@@ -113,6 +119,9 @@ class Order:
 
     def is_buy_order(self) -> bool:
         return (self.side == 'buy')
+
+    def is_pegged_order(self) -> bool:
+        return (self.type == 'pegged')
 
     def is_limit_order(self) -> bool:
         return (self.type == 'limit')
@@ -176,7 +185,7 @@ class OrderBook:
 
 
         self.all_orders_dict[order.get_id()] = order
-        Utilities.print_message('Created the order: {}'.format(order))
+        Utilities.print_message('Order created: {}'.format(order))
 
     def cancel_order(self, id: int) -> Order:
         order = self.get_order(id)
@@ -272,22 +281,16 @@ class MatchingMachine:
                 order_dict = {
                     'type': order_arr[0],
                     'side': order_arr[2],
-                    'qty': int(order_arr[3])
+                    'qty': (order_arr[3])
                 }
-
-                pegged_type = order_arr[1] 
-                if (pegged_type == 'bid'):
-                    order_dict['price'] = OrderBook.get_bid_price()
-                else:
-                    order_dict['price'] = OrderBook.get_offer_price()
 
             # join the limit order atributes
             else:
                 order_dict = {
                     'type': order_arr[0],
                     'side': order_arr[1],
-                    'price': float(order_arr[2]),
-                    'qty': int(order_arr[3])
+                    'price': (order_arr[2]),
+                    'qty': (order_arr[3])
                 }
         
         # join the market order atributes
@@ -295,8 +298,8 @@ class MatchingMachine:
             order_dict = {
                 'type': order_arr[0],
                 'side': order_arr[1],
-                'price': float(order_arr[2]),
-                'qty': int(order_arr[3])
+                'price': (order_arr[2]),
+                'qty': (order_arr[3])
             }
         else:
             return None
@@ -350,6 +353,7 @@ class MatchingMachine:
         buy_order_target = self.get_order(id)
         for sell_order in self.book.get_sell_orders():
             sell_order = self.get_order(sell_order)
+            
             # this order is executed if the sell price is equal to or lower than the desired buy price
             if (sell_order.get_price() <= buy_order_target.get_price()):
                 # getting the lowest price between the orders 
@@ -496,15 +500,6 @@ class MatchingMachine:
             # there are no more buy ordes
             return False
         
-    def get_sell_orders(self):
-        return (self.book.get_sell_orders())
-
-    def get_buy_orders(self):
-        return (self.book.get_buy_orders())
-
-    def get_order(self, id: int):
-        return self.book.get_order(id)
-
     def cancel_order(self, id: int) -> Order:
         order = self.book.cancel_order(id)
         if (order):
@@ -512,24 +507,19 @@ class MatchingMachine:
 
         return order
 
-    def change_order(self, id: int, new_price: int = 0, new_qty: int = 0) -> bool:
-        self.book.change_order(id, new_price, new_qty)
-
-    def order_exists(self, id: int) -> bool:
-        return self.book.order_exists(id)
-
     def try_execute_order(self, id: int) -> bool:
         if (self.order_exists(id)):
             order = self.get_order(id)
             try_execute_order_again = False
-            # make trade
+            
+            # trying execute order
             if (order.is_buy_order()):
-                if (order.is_limit_order()):
+                if (order.is_limit_order() or order.is_pegged_order()):
                     try_execute_order_again = self.buy_limit_order(id)
                 else:
                     try_execute_order_again = self.buy_market_order(id)
             else:
-                if (order.is_limit_order()):
+                if (order.is_limit_order() or order.is_pegged_order()):
                     try_execute_order_again = self.sell_limit_order(id)
                 else:
                     try_execute_order_again = self.sell_market_order(id)
@@ -615,7 +605,7 @@ class MatchingMachine:
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-primary_book.add_order(Order({'type': 'limit', 'side': 'buy', 'price': 11, 'qty': 10}))
+primary_book.add_order(Order({'type': 'limit', 'side': 'buy', 'price': '11', 'qty': '10'}))
 
 machine.manual_input_handler()
 # machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
