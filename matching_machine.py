@@ -319,12 +319,12 @@ class OrderBook:
         if (OrderBook.bid_price):
             _str ='\nBid price: {}\n'.format(OrderBook.bid_price)
         else: 
-            _str ='\nBid price: not priced yed\n'
+            _str ='\nBid price: not priced yet\n'
 
         if (OrderBook.offer_price):
             _str +='Offer price: {}\n'.format(OrderBook.offer_price)
         else: 
-            _str +='Offer price: not priced yed\n\n'
+            _str +='Offer price: not priced yet\n'
 
         _str += '\nBuy Orders: \n'
         for order in self.buy_side_dict:
@@ -401,31 +401,31 @@ class MatchingMachine:
         order_arr = (order.strip()).split(' ')
 
         # orders attributes
-        if (len(order_arr) == 4):
+        if (len(order_arr) == 6):
             # join the pegged orders attributes
-            if ('peg' in order_arr[0]):
+            if ('peg' in order_arr[-4]):
                 order_dict = {
-                    'type': order_arr[0],
-                    'ref': order_arr[1],
-                    'side': order_arr[2],
-                    'qty': (order_arr[3])
+                    'type': order_arr[-4],
+                    'ref': order_arr[-3],
+                    'side': order_arr[-2],
+                    'qty': (order_arr[-1])
                 }
 
             # join the limit order attributes
             else:
                 order_dict = {
-                    'type': order_arr[0],
-                    'side': order_arr[1],
-                    'price': (order_arr[2]),
-                    'qty': (order_arr[3])
+                    'type': order_arr[-4],
+                    'side': order_arr[-3],
+                    'price': (order_arr[-2]),
+                    'qty': (order_arr[-1])
                 }
         
         # join the market order attributes
-        elif (len(order_arr) == 3):
+        elif (len(order_arr) == 5):
             order_dict = {
-                'type': order_arr[0],
-                'side': order_arr[1],
-                'qty': (order_arr[2])
+                'type': order_arr[-3],
+                'side': order_arr[-2],
+                'qty': (order_arr[-1])
             }
         else:
             return None
@@ -618,38 +618,38 @@ class MatchingMachine:
 
     def try_execute_order(self, id: int):
         if (self.book.order_exists(id)):
-                order = self.book.get_order(id)
-                order.set_executed_once()
+            order = self.book.get_order(id)
+            order.set_executed_once()
 
-                # This variable signals whether the created order was completely filled or not
-                try_execute_order_again = False
-                
-                # trying execute order
+            # This variable signals whether the created order was completely filled or not
+            try_execute_order_again = False
+            
+            # trying execute order
+            if (
+                order.is_buy_order() and 
+                # verifying whether sell orders have already been created
+                len(self.book.get_sell_orders())
+            ):
+                if (order.is_limit_order() or order.is_pegged_order()):
+                    try_execute_order_again = self.buy_limit_order(id)
+                else:
+                    try_execute_order_again = self.buy_market_order(id)
+            elif (
+                (not order.is_buy_order()) and 
+                # verifying whether buy orders have already been created
+                len(self.book.get_buy_orders())
+            ):
                 if (
-                    order.is_buy_order() and 
-                    # verifying whether sell orders have already been created
-                    len(self.book.get_sell_orders())
+                    order.is_limit_order() or 
+                    order.is_pegged_order()
                 ):
-                    if (order.is_limit_order() or order.is_pegged_order()):
-                        try_execute_order_again = self.buy_limit_order(id)
-                    else:
-                        try_execute_order_again = self.buy_market_order(id)
-                elif (
-                    (not order.is_buy_order()) and 
-                    # verifying whether buy orders have already been created
-                    len(self.book.get_buy_orders())
-                ):
-                    if (
-                        order.is_limit_order() or 
-                        order.is_pegged_order()
-                    ):
-                        try_execute_order_again = self.sell_limit_order(id)
-                    else:
-                        try_execute_order_again = self.sell_market_order(id)
+                    try_execute_order_again = self.sell_limit_order(id)
+                else:
+                    try_execute_order_again = self.sell_market_order(id)
 
-                if (try_execute_order_again):
-                    # trying to fill the current order
-                    self.try_execute_order(order)
+            if (try_execute_order_again):
+                # trying to fill the current order
+                self.try_execute_order(order.get_id())
             
     def manual_input_handler(self, direct_command: str = ''):
         # MatchingMachine.help()
@@ -772,7 +772,7 @@ machine = MatchingMachine(primary_book)
 # machine.add_order('pegged offer sell 100')
 # machine.add_order('limit sell 20 10')
 
-machine.manual_input_handler('limit buy 20 10, limit buy 30 10, limit sell 200 10, limit sell 300 10')
+machine.manual_input_handler('create order limit buy 20 10, create order limit buy 20 100, create order market sell 200')
 # machine.manual_input_handler('limit buy 20 10, limit buy 30 10, limit buy 10 10, market sell 10, exit')
 
 print((primary_book.get_sell_orders()))
