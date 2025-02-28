@@ -1,6 +1,8 @@
 # TODO create pause/pause
 # TODO Complete the implementation of the filled orders storage
 # TODO implement the method to show more infos about an trade
+# TODO implement the update index prices when an order is canceled
+# TODO tratment the invalid order
 
 class Utilities:
     @staticmethod
@@ -8,12 +10,24 @@ class Utilities:
         Utilities.print_message('Error: ' + msg)
 
     @staticmethod
-    def get_input(msg: str):
+    def get_input(msg: str = ''):
+        if not (msg):
+            return input('<< ' + msg)
+
         return input('<< ' + msg + ': ')
 
     @staticmethod
     def print_message(msg: str):
-        print('>> ' + msg)
+        msg_icon = '>> ' if MatchingMachine.get_trade_state() else '==  '
+        print(msg_icon + msg)
+
+    @staticmethod
+    def sort_dict(dict: dict, reverse: bool = False) -> list:
+        return sorted(
+            dict.items(), 
+            key= lambda items : items[1].get_price(), 
+            reverse = reverse
+        )
 
 class Order:
     def __init__(self, order_dict: dict):
@@ -220,8 +234,8 @@ class OrderBook:
                 del self.sell_side_dict[id]
             
             # verifying if is necessary update the index prices
-            if (order.is_limit_order()):
-                
+            # if (order.is_limit_order()):
+
 
             return order
 
@@ -277,7 +291,7 @@ class OrderBook:
         if (id in self.all_orders_dict):
             return self.all_orders_dict[id]
         
-        return None
+        return False
     
     def get_all_orders(self) -> dict:
         return self.all_orders_dict
@@ -292,6 +306,18 @@ class OrderBook:
         return (id in self.all_orders_dict)
 
 class MatchingMachine:
+    # statics attributes
+    execute_orders = True
+    receive_inputs = True
+
+    @staticmethod
+    def togle_trades_state():
+        MatchingMachine.execute_orders = not MatchingMachine.execute_orders
+
+    @staticmethod
+    def get_trade_state() -> bool:
+        return MatchingMachine.execute_orders
+
     def __init__(self, book: OrderBook):
         self.book = book
 
@@ -455,22 +481,13 @@ class MatchingMachine:
     def buy_market_order(self, id: int) -> bool:
         buy_order_target = self.book.get_order(id)
 
-        # generating an array from dict
-        lower_price = []
-        for order_id in self.book.get_sell_orders():
-            sell_order = self.book.get_order(order_id)
-
-            # removing market orders from the array
-            if not (sell_order.is_market_order()):
-                lower_price.append(sell_order)
-        
-        # sorting the array in ascending order            
-        lower_price.sort(key = lambda order : order.price)
+        # generating from sell orders dict an ascending sorted array
+        lower_price_tuples = Utilities.sort_dict(self.book.get_sell_orders())
 
         # verifying if the array is not empty
-        if (lower_price):
-            sell_order = lower_price[0]
-            trade_price = lower_price[0].get_price()
+        if (lower_price_tuples):
+            sell_order = lower_price_tuples[0][1]
+            trade_price = sell_order.get_price()
 
             # getting the lowest quantity
             trade_qty = min(buy_order_target.get_qty(), sell_order.get_qty())
@@ -496,22 +513,13 @@ class MatchingMachine:
     def sell_market_order(self, id: int) -> bool:
         sell_order_target = self.book.get_order(id)
 
-        # generating an array from dict
-        highest_price = []
-        for order_id in self.book.get_buy_orders():
-            buy_order = self.book.get_order(order_id)
-
-            # removing market orders from the array
-            if not (buy_order.is_market_order()):
-                highest_price.append(buy_order)
-        
-        # sorting the array in descending order
-        highest_price.sort(key = lambda order : order.price, reverse=True)
+        # generating from sell orders dict an ascending sorted array
+        highest_price_tuples = Utilities.sort_dict(self.book.get_sell_orders(), reverse=True)
 
         # verifying if the array is not empty
-        if (highest_price):
-            buy_order = highest_price[0]
-            trade_price = highest_price[0].get_price()
+        if (highest_price_tuples):
+            buy_order = highest_price_tuples[0][1]
+            trade_price = buy_order.get_price()
 
             trade_qty = min(sell_order_target.get_qty(), buy_order.get_qty())
             
@@ -542,36 +550,44 @@ class MatchingMachine:
 
     def try_execute_order(self, id: int):
         if (self.book.order_exists(id)):
-            order = self.book.get_order(id)
-            try_execute_order_again = False
+                order = self.book.get_order(id)
+                try_execute_order_again = False
+                
+                # trying execute order
+                if (order.is_buy_order() and len(self.book.get_sell_orders())):
+                    if (order.is_limit_order() or order.is_pegged_order()):
+                        try_execute_order_again = self.buy_limit_order(id)
+                    else:
+                        try_execute_order_again = self.buy_market_order(id)
+                elif (len(self.book.get_buy_orders())):
+                    if (order.is_limit_order() or order.is_pegged_order()):
+                        try_execute_order_again = self.sell_limit_order(id)
+                    else:
+                        try_execute_order_again = self.sell_market_order(id)
+
+                if (try_execute_order_again):
+                    # trying to fill the current order
+                    self.try_execute_order(order)
             
-            # trying execute order
-            if (order.is_buy_order() and len(self.book.get_sell_orders())):
-                if (order.is_limit_order() or order.is_pegged_order()):
-                    try_execute_order_again = self.buy_limit_order(id)
-                else:
-                    try_execute_order_again = self.buy_market_order(id)
-            elif (len(self.book.get_buy_orders())):
-                if (order.is_limit_order() or order.is_pegged_order()):
-                    try_execute_order_again = self.sell_limit_order(id)
-                else:
-                    try_execute_order_again = self.sell_market_order(id)
-
-            if (try_execute_order_again):
-                # trying to fill the current order
-                self.try_execute_order(order)
+    def manual_input_handler(self, direct_command: str = ''):
+        # MatchingMachine.help()
+        # Utilities.print_message('Enter your orders/commands line by line or comma separated:')
         
-
-    def manual_input_handler(self):
-        MatchingMachine.help()
-        Utilities.print_message('Enter your orders/commands line by line or comma separated:')
-        while (True):
-            prompt_input_arr = input('<< ').split(',')
+        while (MatchingMachine.receive_inputs):
+            if (direct_command):
+                prompt_input_arr = (direct_command).split(',')
+                direct_command = ''
+            else:
+                prompt_input_arr = (Utilities.get_input()).split(',')
 
             for command in prompt_input_arr:
                 if ('print' in command):
                     print(self.book)
-                
+
+                if ('pause' in command or 'continue' in command):
+                    MatchingMachine.togle_trades_state()
+                    Utilities.print_message("Trades are currently paused. Type 'continue trade' to resume.")
+
                 elif ('cancel' in command):
                     cmd_arr = command.split(' ')
 
@@ -619,7 +635,7 @@ class MatchingMachine:
 
                 elif ('exit' in command):
                     Utilities.print_message('Ending the program...')
-                    break
+                    MatchingMachine.receive_inputs = False
                 
                 elif ('help' in command):
                     MatchingMachine.help()
@@ -627,12 +643,13 @@ class MatchingMachine:
                 elif ('skip' in command):
                     pass
 
-                # create a new order
+                # create a new order and try execute
                 else:
                     order = self.add_order(command)
                     
-                    if (order):
-                        self.try_execute_order(order.get_id())
+                    if (order.get_id() != None):
+                        if (MatchingMachine.execute_orders):
+                            self.try_execute_order(order.get_id())
                     else:
                         Utilities.print_error('"{}", is an invalid and has been ignored.'.format(command))
     
@@ -650,11 +667,15 @@ class MatchingMachine:
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
-primary_book.add_order(Order({'type': 'limit', 'side': 'buy', 'price': '11', 'qty': '10'}))
-machine.add_order('pegged offer sell 100')
-machine.add_order('limit sell 20 10')
 
-machine.manual_input_handler()
+# primary_book.add_order(Order({'type': 'limit', 'side': 'buy', 'price': '11', 'qty': '10'}))
+# machine.add_order('pegged offer sell 100')
+# machine.add_order('limit sell 20 10')
+
+machine.manual_input_handler('limit buy 20 10, limit buy 30 10, limit buy 10 10, market sell 10, exit')
+
+print((primary_book.get_sell_orders()))
+print(Utilities.sort_dict(primary_book.get_sell_orders()))
 # machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
 # machine.add_order({'type': 'limit', 'side': 'buy', 'price': 9, 'qty': 20})
