@@ -76,12 +76,20 @@ class Order:
                 Utilities.print_error('This order has a invalid reference price')
 
     def __str__(self) -> str:
+        if (self.type != 'market'):
+            price = ' @ $' + str(self.get_price())
+
+            # setting a pegged order without price
+            if (not self.get_price() and ('peg' in self.type)):
+                price = ' @ not priced yet'
+        else:
+            price = ''
         print_msg = '(ID: {}) {} {} {} un.{}'.format(
                 self.get_id(),
                 self.get_type(),
                 self.get_side(),
                 self.get_qty(),
-                " @ $" + str(self.get_price()) if self.type != 'market' else ''
+                price
             )
 
         return print_msg
@@ -244,7 +252,7 @@ class OrderBook:
                     order.is_buy_order() and
                     order.get_price() >= OrderBook.get_bid_price()
                 ):
-                    buy_arr = self.sort_dict_limit_orders_by_price('buy', reverse=True)
+                    buy_arr = self.sort_dict_lim_orders_by_price('buy', reverse=True)
                     
                     if (buy_arr):
                         new_highest_price = buy_arr[0].get_price()
@@ -257,7 +265,7 @@ class OrderBook:
                     (not order.is_buy_order()) and
                     order.get_price() <= OrderBook.get_offer_price()
                 ):
-                    sell_arr = self.sort_dict_limit_orders_by_price('sell')
+                    sell_arr = self.sort_dict_lim_orders_by_price('sell')
 
                     if (sell_arr):
                         new_lowest_price = sell_arr[0].get_price()
@@ -336,7 +344,7 @@ class OrderBook:
         
         return _str
 
-    def sort_dict_limit_orders_by_price(self, side: str, reverse: bool = False) -> list:
+    def sort_dict_lim_peg_orders_by_price(self, side: str, reverse: bool = False) -> list:
         """
         take buy/sell side dict orders, create an array with limit and peg orders
         and sort this arr in ascending(default) or decending ordem
@@ -350,6 +358,30 @@ class OrderBook:
 
         for order in dict_orders.values():
             if not (order.is_market_order()):
+                limit_orders_arr.append(order)
+
+        ret = sorted(
+            limit_orders_arr, 
+            key= lambda item : item.get_price(), 
+            reverse = reverse
+        )
+
+        return ret
+    
+    def sort_dict_lim_orders_by_price(self, side: str, reverse: bool = False) -> list:
+        """
+        take buy/sell side dict orders, create an array with limit orders
+        and sort this arr in ascending(default) or decending ordem
+        """
+        limit_orders_arr = []
+
+        if ('sell' in side):
+            dict_orders = self.get_sell_orders()
+        else:
+            dict_orders = self.get_buy_orders()
+
+        for order in dict_orders.values():
+            if (order.is_limit_order()):
                 limit_orders_arr.append(order)
 
         ret = sorted(
@@ -555,7 +587,7 @@ class MatchingMachine:
         buy_order_target = self.book.get_order(id)
 
         # generating from sell orders dict an ascending sorted array
-        lower_price_arr = self.book.sort_dict_limit_orders_by_price('sell')
+        lower_price_arr = self.book.sort_dict_lim_peg_orders_by_price('sell')
 
         # verifying if the array is not empty
         if (lower_price_arr):
@@ -583,7 +615,7 @@ class MatchingMachine:
         sell_order_target = self.book.get_order(id)
 
         # generating from sell orders dict an ascending sorted array
-        highest_price_arr = self.book.sort_dict_limit_orders_by_price(
+        highest_price_arr = self.book.sort_dict_lim_peg_orders_by_price(
             'buy',
             reverse=True
         )
@@ -772,12 +804,12 @@ machine = MatchingMachine(primary_book)
 # machine.add_order('pegged offer sell 100')
 # machine.add_order('limit sell 20 10')
 
-machine.manual_input_handler('create order limit buy 20 10, create order limit buy 20 100, create order market sell 200')
+machine.manual_input_handler('create order pegged bid buy 120, create order pegged offer sell 120, create order limit sell 20 20, create order limit buy 10 10')
 # machine.manual_input_handler('limit buy 20 10, limit buy 30 10, limit buy 10 10, market sell 10, exit')
 
 print((primary_book.get_sell_orders()))
-print(str(Utilities.sort_dict_limit_orders_by_price(primary_book.get_sell_orders())))
-print(str(Utilities.sort_dict_limit_orders_by_price(primary_book.get_sell_orders(), reverse=True)))
+print(str(Utilities.sort_dict_lim_peg_orders_by_price(primary_book.get_sell_orders())))
+print(str(Utilities.sort_dict_lim_peg_orders_by_price(primary_book.get_sell_orders(), reverse=True)))
 # machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
 # machine.add_order({'type': 'limit', 'side': 'buy', 'price': 9, 'qty': 20})
