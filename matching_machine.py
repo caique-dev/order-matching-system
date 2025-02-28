@@ -3,6 +3,7 @@
 # TODO implement the method to show more infos about an trade
 # TODO implement the update index prices when an order is canceled
 # TODO tratment the invalid order
+# TODO see what is wrong with te direct order 
 
 class Utilities:
     @staticmethod
@@ -21,17 +22,10 @@ class Utilities:
         msg_icon = '>> ' if MatchingMachine.get_trade_state() else '==  '
         print(msg_icon + msg)
 
-    @staticmethod
-    def sort_dict(dict: dict, reverse: bool = False) -> list:
-        return sorted(
-            dict.items(), 
-            key= lambda items : items[1].get_price(), 
-            reverse = reverse
-        )
-
 class Order:
     def __init__(self, order_dict: dict):
         self.id = None
+        self.executed_once = False
 
         # setting type
         if (
@@ -81,7 +75,6 @@ class Order:
             else:
                 Utilities.print_error('This order has a invalid reference price')
 
-
     def __str__(self) -> str:
         print_msg = '(ID: {}) {} {} {} un.{}'.format(
                 self.get_id(),
@@ -99,9 +92,22 @@ class Order:
             self.type,
             self.side,
             self.qty,
-            '$'+str((self.price)) if (self.type == 'limit') else ('')
+            '$'+str((self.get_price())) if (self.type != 'market') else ('')
         )
-    
+     
+    def has_this_order_executed(self) -> bool:
+        """
+        Return true whether the order has already been executed once 
+        and return False otherwise
+        """
+        return (self.executed_once)
+
+    def set_executed_once(self):
+        """
+        signals that the order has already been executed at least once 
+        """
+        self.executed_once = True
+
     def set_id(self, id: int):
         self.id = id
 
@@ -179,11 +185,11 @@ class OrderBook:
 
     def add_order(self, order: Order):
         if (order.is_buy_order()):
-            order.set_id(self.get_last_order_id())
+            order.set_id(self.get_order_index())
             self.buy_side_dict[order.get_id()] = order
             self.incremment_order_index()
         else:
-            order.set_id(self.get_last_order_id())
+            order.set_id(self.get_order_index())
             self.sell_side_dict[order.get_id()] = order
             self.incremment_order_index()
 
@@ -216,7 +222,6 @@ class OrderBook:
                 )
             ):
                 OrderBook.update_offer_price(order_price)
-
 
     def cancel_order(self, id: int) -> Order:
         order = self.get_order(id)
@@ -270,7 +275,17 @@ class OrderBook:
     def add_filled_order(self, order_id: int):
         self.filled_orders_dict[order_id] = self.get_order(order_id)
 
-    def get_last_order_id(self):
+    def get_last_active_order_id(self) -> int:
+        """
+        Return the id of last created active order
+        """
+        target_key = list(self.all_orders_dict.keys())[-1]
+        return (self.get_all_orders())[target_key].get_id()
+    
+    def get_order_index(self) -> int:
+        """
+        Return an avaible order id
+        """
         return self.order_index
 
     def incremment_order_index(self):
@@ -286,6 +301,30 @@ class OrderBook:
             _str += str(self.sell_side_dict[order]) + '\n'
         
         return _str
+
+    def sort_dict_limit_orders_by_price(self, side: str, reverse: bool = False) -> list:
+        """
+        take buy/sell side dict orders, create an array with limit and peg orders
+        and sort this arr in ascending(default) or decending ordem
+        """
+        limit_orders_arr = []
+
+        if ('sell' in side):
+            dict_orders = self.get_all_orders()
+        else:
+            dict_orders = self.get_buy_orders()
+
+        for order in dict_orders.values():
+            if not (order.is_market_order()):
+                limit_orders_arr.append(order)
+
+        ret = sorted(
+            limit_orders_arr, 
+            key= lambda item : item.get_price(), 
+            reverse = reverse
+        )
+
+        return ret
 
     def get_order(self, id: int) -> Order:
         if (id in self.all_orders_dict):
@@ -482,11 +521,11 @@ class MatchingMachine:
         buy_order_target = self.book.get_order(id)
 
         # generating from sell orders dict an ascending sorted array
-        lower_price_tuples = Utilities.sort_dict(self.book.get_sell_orders())
+        lower_price_arr = self.book.sort_dict_limit_orders_by_price('sell')
 
         # verifying if the array is not empty
-        if (lower_price_tuples):
-            sell_order = lower_price_tuples[0][1]
+        if (lower_price_arr):
+            sell_order = lower_price_arr[0]
             trade_price = sell_order.get_price()
 
             # getting the lowest quantity
@@ -514,11 +553,14 @@ class MatchingMachine:
         sell_order_target = self.book.get_order(id)
 
         # generating from sell orders dict an ascending sorted array
-        highest_price_tuples = Utilities.sort_dict(self.book.get_sell_orders(), reverse=True)
+        highest_price_arr = self.book.sort_dict_limit_orders_by_price(
+            'buy',
+            reverse=True
+        )
 
         # verifying if the array is not empty
-        if (highest_price_tuples):
-            buy_order = highest_price_tuples[0][1]
+        if (highest_price_arr):
+            buy_order = highest_price_arr[0]
             trade_price = buy_order.get_price()
 
             trade_qty = min(sell_order_target.get_qty(), buy_order.get_qty())
@@ -551,6 +593,9 @@ class MatchingMachine:
     def try_execute_order(self, id: int):
         if (self.book.order_exists(id)):
                 order = self.book.get_order(id)
+                order.set_executed_once()
+
+                # This variable signals whether the created order was completely filled or not
                 try_execute_order_again = False
                 
                 # trying execute order
@@ -584,10 +629,22 @@ class MatchingMachine:
                 if ('print' in command):
                     print(self.book)
 
-                if ('pause' in command or 'continue' in command):
+                elif ('pause' in command):
                     MatchingMachine.togle_trades_state()
                     Utilities.print_message("Trades are currently paused. Type 'continue trade' to resume.")
 
+                elif ('continue' in command):
+                    MatchingMachine.togle_trades_state()
+                    Utilities.print_message("Trades have resumed.")
+                    
+                    last_created_order = self.book.get_order(
+                        self.book.get_last_active_order_id()
+                    )
+
+                    # verify whether the last created order has been executed
+                    if not (last_created_order.has_this_order_executed()):
+                        self.try_execute_order(last_created_order.get_id())
+            
                 elif ('cancel' in command):
                     cmd_arr = command.split(' ')
 
@@ -662,8 +719,6 @@ class MatchingMachine:
         Utilities.print_message('To exit the program: exit')
 
 
-        
-
 primary_book = OrderBook()
 machine = MatchingMachine(primary_book)
 
@@ -672,10 +727,12 @@ machine = MatchingMachine(primary_book)
 # machine.add_order('pegged offer sell 100')
 # machine.add_order('limit sell 20 10')
 
-machine.manual_input_handler('limit buy 20 10, limit buy 30 10, limit buy 10 10, market sell 10, exit')
+machine.manual_input_handler('limit sell 20 10, pause, market buy 20, continue')
+# machine.manual_input_handler('limit buy 20 10, limit buy 30 10, limit buy 10 10, market sell 10, exit')
 
 print((primary_book.get_sell_orders()))
-print(Utilities.sort_dict(primary_book.get_sell_orders()))
+print(str(Utilities.sort_dict_limit_orders_by_price(primary_book.get_sell_orders())))
+print(str(Utilities.sort_dict_limit_orders_by_price(primary_book.get_sell_orders(), reverse=True)))
 # machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
 
 # machine.add_order({'type': 'limit', 'side': 'buy', 'price': 9, 'qty': 20})
