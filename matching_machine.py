@@ -216,10 +216,14 @@ class OrderBook:
             # removing the order from one of two specific  dict
             if (order.is_buy_order()):
                 del self.buy_side_dict[id]
-                return order
             else:
                 del self.sell_side_dict[id]
-                return order
+            
+            # verifying if is necessary update the index prices
+            if (order.is_limit_order()):
+                
+
+            return order
 
     def change_order(self, id: int, new_price: str = '', new_qty: str = '', remove_priority: bool = True) -> bool:
         if not (self.order_exists(id)):
