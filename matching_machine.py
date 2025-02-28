@@ -227,7 +227,7 @@ class OrderBook:
         order = self.get_order(id)
 
         if not (order):
-            Utilities.print_error('This order not exists.')
+            Utilities.print_error('2This order not exists.')
         else:
             # removing the order from the general dict
             del self.all_orders_dict[id]
@@ -239,14 +239,38 @@ class OrderBook:
                 del self.sell_side_dict[id]
             
             # verifying if is necessary update the index prices
-            # if (order.is_limit_order()):
+            if (order.is_limit_order()):
+                if (
+                    order.is_buy_order() and
+                    order.get_price() >= OrderBook.get_bid_price()
+                ):
+                    buy_arr = self.sort_dict_limit_orders_by_price('buy', reverse=True)
+                    
+                    if (buy_arr):
+                        new_highest_price = buy_arr[0].get_price()
+                        # updating the bid price
+                        self.update_bid_price(new_highest_price)
+                    else: 
+                        self.update_bid_price(0)   
 
+                elif (
+                    (not order.is_buy_order()) and
+                    order.get_price() <= OrderBook.get_offer_price()
+                ):
+                    sell_arr = self.sort_dict_limit_orders_by_price('sell')
+
+                    if (sell_arr):
+                        new_lowest_price = sell_arr[0].get_price()
+                        # updating the bid price
+                        self.update_offer_price(new_lowest_price)
+                    else: 
+                        self.update_offer_price(0)                
 
             return order
 
     def change_order(self, id: int, new_price: str = '', new_qty: str = '', remove_priority: bool = True) -> bool:
         if not (self.order_exists(id)):
-            Utilities.print_error('This order not exists.')
+            Utilities.print_error('1This order not exists.')
             return False
         else: 
             order = self.get_order(id)
@@ -292,11 +316,21 @@ class OrderBook:
         self.order_index += 1
 
     def __str__(self):
-        _str = 'Buy Orders: \n'
+        if (OrderBook.bid_price):
+            _str ='\nBid price: {}\n'.format(OrderBook.bid_price)
+        else: 
+            _str ='\nBid price: not priced yed\n'
+
+        if (OrderBook.offer_price):
+            _str +='Offer price: {}\n'.format(OrderBook.offer_price)
+        else: 
+            _str +='Offer price: not priced yed\n\n'
+
+        _str += '\nBuy Orders: \n'
         for order in self.buy_side_dict:
             _str += str(self.buy_side_dict[order]) + '\n'
 
-        _str += 'Sell Orders: \n'
+        _str += '\nSell Orders: \n'
         for order in self.sell_side_dict:
             _str += str(self.sell_side_dict[order]) + '\n'
         
@@ -310,7 +344,7 @@ class OrderBook:
         limit_orders_arr = []
 
         if ('sell' in side):
-            dict_orders = self.get_all_orders()
+            dict_orders = self.get_sell_orders()
         else:
             dict_orders = self.get_buy_orders()
 
@@ -327,6 +361,9 @@ class OrderBook:
         return ret
 
     def get_order(self, id: int) -> Order:
+        """
+        Return the order if its exists, otherwise return False
+        """
         if (id in self.all_orders_dict):
             return self.all_orders_dict[id]
         
@@ -400,9 +437,6 @@ class MatchingMachine:
         
         return order_obj
 
-    def add_filled_order(self, order_id: int):
-        self.book.add_filled_order(order_id)
-
     def partial_trade(self, sell_order_id: int, buy_order_id: int):
         sell_order = self.book.get_order(sell_order_id)
         sell_qty = sell_order.get_qty()
@@ -410,7 +444,13 @@ class MatchingMachine:
         buy_order = self.book.get_order(buy_order_id)
         buy_qty = buy_order.get_qty()
 
-        if (sell_qty < buy_qty):
+        if (sell_qty == buy_qty):
+            filled_order = self.book.cancel_order(sell_order.get_id())
+            self.book.add_filled_order(filled_order)
+
+            filled_order = self.book.cancel_order(buy_order.get_id())
+            self.book.add_filled_order(filled_order)
+        elif (sell_qty < buy_qty):
             # the sell order has been filled
             new_buy_qty = buy_qty - sell_qty
 
@@ -423,6 +463,9 @@ class MatchingMachine:
 
             # removing the filled order of the book
             filled_order = self.book.cancel_order(sell_order.get_id())
+
+            self.book.add_filled_order(filled_order.get_id())
+
         else:
             # buy order has been filled
             new_sell_qty = sell_qty - buy_qty
@@ -435,8 +478,7 @@ class MatchingMachine:
             )
             # removing the filled order of the book
             filled_order = self.book.cancel_order(buy_order.get_id())
-
-        self.book.add_filled_order(filled_order.get_id())
+            self.book.add_filled_order(filled_order.get_id())
 
     def buy_limit_order(self, id: int) -> bool:
         buy_order_target = self.book.get_order(id)
@@ -463,17 +505,13 @@ class MatchingMachine:
                 Utilities.print_message('Trade, price: ${}, qty: {} un.'.format(trade_price, trade_qty))
 
                 # partial trade
-                if (buy_order_target.get_qty() != sell_order.get_qty()):
-                    self.partial_trade({
-                        'sell_order_id': sell_order.get_id(),
-                        'buy_order_id': buy_order_target.get_id()
-                    })
+                self.partial_trade(
+                    sell_order_id=sell_order.get_id(),
+                    buy_order_id=buy_order_target.get_id()
+                )
 
-                    # sinaling if the target order was filled
-                    return (buy_order_target.get_qty() > sell_order.get_qty())
-                else:
-                    # target order was filled executed
-                    return False
+                # sinaling if the target order was filled
+                return (buy_order_target.get_qty() > sell_order.get_qty())
         else:
             # none of the sell orders hit the price
             return False
@@ -503,16 +541,12 @@ class MatchingMachine:
                 Utilities.print_message('Trade, price: ${}, qty: {} un.'.format(trade_price, trade_qty))
 
                 # partial trade
-                if (buy_order.get_qty() != sell_order_target.get_qty()):
-                    self.partial_trade(
-                        sell_order_id= sell_order_target.get_id(),
-                        buy_order_id= buy_order.get_id()
-                    )
-                    # sinaling if the target order was filled
-                    return (sell_order_target.get_qty() > buy_order.get_qty())
-                else:
-                    # order was completly executed
-                    return False
+                self.partial_trade(
+                    sell_order_id= sell_order_target.get_id(),
+                    buy_order_id= buy_order.get_id()
+                )
+                # sinaling if the target order was filled
+                return (sell_order_target.get_qty() > buy_order.get_qty())
             
         # none of the buy orders hit the price
         return False
@@ -534,17 +568,13 @@ class MatchingMachine:
             Utilities.print_message('Trade, price: ${}, qty: {} un.'.format(trade_price, trade_qty))
 
             # partial trade
-            if (buy_order_target.get_qty() != sell_order.get_qty()):
-                self.partial_trade(
-                    sell_order_id= sell_order.get_id(),
-                    buy_order_id= buy_order_target.get_id()
-                )
+            self.partial_trade(
+                sell_order_id= sell_order.get_id(),
+                buy_order_id= buy_order_target.get_id()
+            )
 
-                # sinaling if the target order was filled
-                return (buy_order_target.get_qty() > sell_order.get_qty())
-            else:
-                # target order was completly filled
-                return False
+            # sinaling if the target order was filled
+            return (buy_order_target.get_qty() > sell_order.get_qty())
         else:
             # there are no more sell ordes
             return False
@@ -568,17 +598,13 @@ class MatchingMachine:
             Utilities.print_message('Trade, price: ${}, qty: {} un.'.format(trade_price, trade_qty))
 
             # partial trade
-            if (sell_order_target.get_qty() != buy_order.get_qty()):
-                self.partial_trade(
-                    buy_order_id = buy_order.get_id(),
-                    sell_order_id = sell_order_target.get_id()
-                )
+            self.partial_trade(
+                buy_order_id = buy_order.get_id(),
+                sell_order_id = sell_order_target.get_id()
+            )
 
-                # sinaling if the target order was filled
-                return (sell_order_target.get_qty() > buy_order.get_qty())
-            else:
-                # the order was completly filled
-                return False
+            # sinaling if the target order was filled
+            return (sell_order_target.get_qty() > buy_order.get_qty())
         else:
             # there are no more buy ordes
             return False
@@ -599,13 +625,24 @@ class MatchingMachine:
                 try_execute_order_again = False
                 
                 # trying execute order
-                if (order.is_buy_order() and len(self.book.get_sell_orders())):
+                if (
+                    order.is_buy_order() and 
+                    # verifying whether sell orders have already been created
+                    len(self.book.get_sell_orders())
+                ):
                     if (order.is_limit_order() or order.is_pegged_order()):
                         try_execute_order_again = self.buy_limit_order(id)
                     else:
                         try_execute_order_again = self.buy_market_order(id)
-                elif (len(self.book.get_buy_orders())):
-                    if (order.is_limit_order() or order.is_pegged_order()):
+                elif (
+                    (not order.is_buy_order()) and 
+                    # verifying whether buy orders have already been created
+                    len(self.book.get_buy_orders())
+                ):
+                    if (
+                        order.is_limit_order() or 
+                        order.is_pegged_order()
+                    ):
                         try_execute_order_again = self.sell_limit_order(id)
                     else:
                         try_execute_order_again = self.sell_market_order(id)
@@ -633,7 +670,7 @@ class MatchingMachine:
                     MatchingMachine.togle_trades_state()
                     Utilities.print_message("Trades are currently paused. Type 'continue trade' to resume.")
 
-                elif ('continue' in command):
+                elif ('resume' in command):
                     MatchingMachine.togle_trades_state()
                     Utilities.print_message("Trades have resumed.")
                     
@@ -666,7 +703,7 @@ class MatchingMachine:
                         if (self.book.order_exists(int(cmd_arr[-1]))):
                             order_id = int(cmd_arr[-1])
                         else:
-                            Utilities.print_error('This order not exists.')
+                            Utilities.print_error('3This order not exists.')
                     else:
                         Utilities.print_error('This ID is invalid')
                     
@@ -712,11 +749,19 @@ class MatchingMachine:
     
     @staticmethod
     def help():
-        Utilities.print_message('To add a new order: create order <order type (limit/market/pegged)> <order price (just for limit orders)> <order quantity>')
+        Utilities.print_message('To add a new order: create order [1] [2] [3] [4] [5]')
+        Utilities.print_message(' - [1] <order type (limit/market/pegged)> ')
+        Utilities.print_message(' - [2] <order index (just for pegged orders)(limit/market/pegged)>')
+        Utilities.print_message(' - [3] <order side (sell/buy)>')
+        Utilities.print_message(' - [4] <order price (just for limit orders)>')
+        Utilities.print_message(' - [5] <order quantity>')
         Utilities.print_message('To change an order: create <order id>')
         Utilities.print_message('To cancel an order: cancel <order id>')
         Utilities.print_message('To print the book: print book')
+        Utilities.print_message('To pause the trades: pause')
+        Utilities.print_message('To resume the trade: resume')
         Utilities.print_message('To exit the program: exit')
+        Utilities.print_message('Type "help" to see these tips again')
 
 
 primary_book = OrderBook()
@@ -727,7 +772,7 @@ machine = MatchingMachine(primary_book)
 # machine.add_order('pegged offer sell 100')
 # machine.add_order('limit sell 20 10')
 
-machine.manual_input_handler('limit sell 20 10, pause, market buy 20, continue')
+machine.manual_input_handler('limit buy 20 10, limit buy 30 10, limit sell 200 10, limit sell 300 10')
 # machine.manual_input_handler('limit buy 20 10, limit buy 30 10, limit buy 10 10, market sell 10, exit')
 
 print((primary_book.get_sell_orders()))
