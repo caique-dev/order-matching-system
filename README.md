@@ -6,6 +6,8 @@ Escolhi desenvolver a solução em Python, pois é a linguagem com a qual tenho 
 
 A interação com o programa é por meio das linhas de comando, para isso basta executar o arquivo main.py. É possível digitar “help” para ter acesso a uma explicação rápida.
 
+![tips.png](assets/tips.png)
+
 # Bônus:
 
 ## 1. “Implementar uma função/método para visualização do livro”
@@ -21,8 +23,6 @@ Após executar o arquivo main.py, é possível digitar:
 Utilizei dicionários para armazenar as ordens à medida que são criadas. Assim como os vetores, em Python, os dicionários presenvam a ordem de adição. Assim, a prioridade é respeitada durante a iteração.
 
 O uso de dicionário também junto com um id único como chave para cada nova ordem gerada, resulta em um ganho de performance, pois a leitura de qualquer ordem é feita em O(1), não sendo necessário percorrer todo o array para encontrar uma ordem em específico.
-
-![tips.png](assets/tips.png)
 
 ## 3. “Implementação de cancelamento”
 
