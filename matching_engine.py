@@ -321,8 +321,9 @@ class OrderBook:
         """
         Return the id of last created active order
         """
-        target_key = list(self.all_orders_dict.keys())[-1]
-        return (self.get_all_orders())[target_key].get_id()
+        if (self.all_orders_dict.keys()):
+            target_key = list(self.all_orders_dict.keys())[-1]
+            return (self.get_all_orders())[target_key].get_id()
     
     def get_order_index(self) -> int:
         """
@@ -789,7 +790,7 @@ class MatchinEngine:
 
                 elif ('pause' in command):
                     MatchinEngine.togle_trades_state()
-                    Utilities.print_message("Trades are currently paused. Type 'continue trade' to resume.")
+                    Utilities.print_message("Trades are currently paused. Type 'resume trade' to resume.")
 
                 elif ('resume' in command):
                     MatchinEngine.togle_trades_state()

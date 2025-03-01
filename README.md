@@ -4,7 +4,7 @@
 
 Escolhi desenvolver a solução em Python, pois é a linguagem com a qual tenho mais familiaridade. Embora não seja ideal para trabalhar com POO, foi o suficiente para deixar o código mais legível e simples. 
 
-A interação com o programa é por meio das linhas de comando, sempre é possível digitar “help” para ter acesso a uma explicação rápida
+A interação com o programa é por meio das linhas de comando, para isso basta executar o arquivo main.py. É possível digitar “help” para ter acesso a uma explicação rápida.
 
 # Bônus:
 
@@ -21,6 +21,8 @@ Após executar o arquivo main.py, é possível digitar:
 Utilizei dicionários para armazenar as ordens à medida que são criadas. Assim como os vetores, em Python, os dicionários presenvam a ordem de adição. Assim, a prioridade é respeitada durante a iteração.
 
 O uso de dicionário também junto com um id único como chave para cada nova ordem gerada, resulta em um ganho de performance, pois a leitura de qualquer ordem é feita em O(1), não sendo necessário percorrer todo o array para encontrar uma ordem em específico.
+
+![tips.png](assets/tips.png)
 
 ## 3. “Implementação de cancelamento”
 
@@ -40,6 +42,6 @@ Implementei os preços dinâmicos através de atributos de classe que são atual
 
 # Complexidade
 
-A função que mais se afasta da complexidade linear é a que ordena os dicionários e é utilizada na execução de ordens do tipo market. utilizei a função [sorte()](https://en.wikipedia.org/wiki/Timsort#Analysis) e sua complexidade, na maioria dos casos, é O(nlogn), assim, ela continua polinomial, logo ainda é “eficiente”
+A função que mais se afasta da complexidade linear é a que ordena os dicionários e é utilizada na execução de ordens do tipo market. utilizei a função [sorted()](https://en.wikipedia.org/wiki/Timsort#Analysis) e sua complexidade, na maioria dos casos, é O(nlogn), assim, ela continua polinomial, logo ainda é “eficiente”
 
 ![image.png](assets/image%201.png)
