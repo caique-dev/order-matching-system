@@ -1,10 +1,3 @@
-# TODO create pause/pause
-# TODO Complete the implementation of the filled orders storage
-# TODO implement the method to show more infos about an trade
-# TODO implement the update index prices when an order is canceled
-# TODO tratment the invalid order
-# TODO see what is wrong with te direct order 
-
 class Utilities:
     @staticmethod
     def print_error(msg: str):
@@ -19,7 +12,7 @@ class Utilities:
 
     @staticmethod
     def print_message(msg: str):
-        msg_icon = '>> ' if MatchingMachine.get_trade_state() else '==  '
+        msg_icon = '>> ' if MatchinEngine.get_trade_state() else '==  '
         print(msg_icon + msg)
 
 class Order:
@@ -442,21 +435,21 @@ class OrderBook:
     def get_all_filled_orders(self) -> dict:
         return (self.filled_orders_dict)
 
-class MatchingMachine:
+class MatchinEngine:
     # statics attributes
     execute_orders = True
     receive_inputs = True
 
     @staticmethod
     def togle_trades_state():
-        MatchingMachine.execute_orders = not MatchingMachine.execute_orders
+        MatchinEngine.execute_orders = not MatchinEngine.execute_orders
 
     @staticmethod
     def get_trade_state() -> bool:
-        return MatchingMachine.execute_orders
+        return MatchinEngine.execute_orders
 
-    def __init__(self, book: OrderBook):
-        self.book = book
+    def __init__(self):
+        self.book = OrderBook()
 
     def add_order(self, order: str) -> Order:
         order_arr = (order.strip()).split(' ')
@@ -559,7 +552,7 @@ class MatchingMachine:
                     # verifying whether the pegged order already has a price
                     sell_order_price > 0
                 ) or
-                sell_order_price 
+                sell_order_price and sell_order.is_market_order()
             ):
                 # getting the lowest price between the orders
                 if (sell_order.is_market_order()):
@@ -609,7 +602,7 @@ class MatchingMachine:
                     # verifying whether pegged order already have price
                     buy_order_price > 0
                 ) or
-                buy_order_price
+                buy_order_price and buy_order.is_market_order()
             ):
                 # getting the highest value between the orders 
                 if (buy_order.is_market_order):
@@ -752,10 +745,10 @@ class MatchingMachine:
                 self.try_execute_order(order.get_id())
             
     def manual_input_handler(self, direct_command: str = ''):
-        MatchingMachine.help()
+        MatchinEngine.help()
         Utilities.print_message('Enter your orders/commands line by line:')
         
-        while (MatchingMachine.receive_inputs):
+        while (MatchinEngine.receive_inputs):
             if (direct_command):
                 prompt_input_arr = (direct_command).split(',')
                 direct_command = ''
@@ -795,11 +788,11 @@ class MatchingMachine:
                                             
 
                 elif ('pause' in command):
-                    MatchingMachine.togle_trades_state()
+                    MatchinEngine.togle_trades_state()
                     Utilities.print_message("Trades are currently paused. Type 'continue trade' to resume.")
 
                 elif ('resume' in command):
-                    MatchingMachine.togle_trades_state()
+                    MatchinEngine.togle_trades_state()
                     Utilities.print_message("Trades have resumed.")
                     
                     last_created_order = self.book.get_order(
@@ -857,10 +850,10 @@ class MatchingMachine:
 
                 elif ('exit' in command):
                     Utilities.print_message('Ending the program...')
-                    MatchingMachine.receive_inputs = False
+                    MatchinEngine.receive_inputs = False
                 
                 elif ('help' in command):
-                    MatchingMachine.help()
+                    MatchinEngine.help()
 
                 elif ('skip' in command):
                     pass
@@ -869,7 +862,7 @@ class MatchingMachine:
                 elif ('create' in command):
                     order = self.add_order(command)
                     
-                    if (MatchingMachine.execute_orders):
+                    if (MatchinEngine.execute_orders):
                         self.try_execute_order(order.get_id())
                 else:
                     Utilities.print_error('"{}", is an invalid command and has been ignored. Type "help"'.format(command))
@@ -891,30 +884,4 @@ class MatchingMachine:
         Utilities.print_message('Type "help" to see these tips again')
 
 
-primary_book = OrderBook()
-machine = MatchingMachine(primary_book)
-
-
-# primary_book.add_order(Order({'type': 'limit', 'side': 'buy', 'price': '11', 'qty': '10'}))
-# machine.add_order('pegged offer sell 100')
-# machine.add_order('limit sell 20 10')
-
-machine.manual_input_handler('create order market sell 200, create order market buy 200')
-# machine.manual_input_handler()
-# machine.manual_input_handler('limit buy 20 10, limit buy 30 10, limit buy 10 10, market sell 10, exit')
-
-print((primary_book.get_sell_orders()))
-print(str(Utilities.sort_dict_lim_peg_orders_by_price(primary_book.get_sell_orders())))
-print(str(Utilities.sort_dict_lim_peg_orders_by_price(primary_book.get_sell_orders(), reverse=True)))
-# machine.add_order({'type': 'market', 'side': 'sell', 'qty': 20})
-
-# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 9, 'qty': 20})
-
-# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 180, 'qty': 19})
-
-# machine.add_order({'type': 'limit', 'side': 'buy', 'price': 160, 'qty': 15})
-
-# print(current_order)
-
-# print(primary_book.get_buy_order())
-# print(primary_book.get_sell_order())
+machine = MatchinEngine()
