@@ -28,45 +28,62 @@ class Order:
         self.executed_once = False
 
         # setting type
-        if (
+        if not (
             order_dict['type'] == 'market' or 
             order_dict['type'] == 'limit' or
             'peg' in order_dict['type']
         ):
-            if ('peg' in order_dict['type']):
-                self.type = 'pegged'
-            else:
-                self.type = order_dict['type']
-        else:
+            # Handling the error without exiting the program
             Utilities.print_error('This order has an invalid type.')
-            return None
+            while not (
+                order_dict['type'] == 'market' or 
+                order_dict['type'] == 'limit' or
+                'peg' in order_dict['type']
+            ):
+                order_dict['type'] = Utilities.get_input('Please, type again')
+
+        if ('peg' in order_dict['type']):
+            self.type = 'pegged'
+        else:
+            self.type = order_dict['type']
 
         # setting side
         if (order_dict['side'] != 'buy' and order_dict['side'] != 'sell'):
                 Utilities.print_error('This order has an invalid "side".')
-                return None
+                while not (order_dict['side'] == 'buy' or order_dict['side'] == 'sell'):
+                    order_dict['side'] = Utilities.get_input('Please, type again')
+
         self.side = order_dict['side']
         
         # setting price
         if (self.type == "limit"):
-            if (
+            if not (
                 order_dict['price'].isdigit() and
                 float(order_dict['price']) > 0
             ):
-                self.price = float(order_dict['price'])
-            else:
                 Utilities.print_error('This order has an invalid price.')
-                return None
+                while not (
+                    order_dict['price'].isdigit() and
+                    float(order_dict['price']) > 0
+                ):
+                    order_dict['price'] = Utilities.get_input('Please, type again')
+
+            self.price = float(order_dict['price'])
 
         # setting quantity        
-        if (
+        if not (
             order_dict['qty'].isdigit() and
             int(order_dict['qty']) > 0
         ):
-            self.qty = int(order_dict['qty'])
-        else:
             Utilities.print_error('This order has an invalid quantity.')
-            return None
+
+            while not (
+                order_dict['qty'].isdigit() and
+                int(order_dict['qty']) > 0
+            ):
+                order_dict['qty'] = Utilities.get_input('Please, type again')
+        
+        self.qty = int(order_dict['qty'])
     
         # setting ref price
         if (self.type == 'pegged'):
@@ -517,16 +534,26 @@ class MatchingMachine:
 
         for sell_order in self.book.get_sell_orders():
             sell_order = self.book.get_order(sell_order)
-            sell_order_price = sell_order.get_price()
+            sell_order_price = True
+
+            # getting the price of peg/lim orders
+            if not (sell_order.is_market_order()):
+                sell_order_price = sell_order.get_price()
         
             # this order is executed if the sell price is equal to or lower than the desired buy price
             if (
-                sell_order_price <= buy_order_target.get_price() and
-                # verifying whether the pegged order already has a price
-                sell_order_price > 0
+                (
+                    sell_order_price <= buy_order_target.get_price() and
+                    # verifying whether the pegged order already has a price
+                    sell_order_price > 0
+                ) or
+                sell_order_price 
             ):
-                # getting the lowest price between the orders 
-                trade_price = min(sell_order.get_price(), buy_order_target.get_price())
+                # getting the lowest price between the orders
+                if (sell_order.is_market_order()):
+                    trade_price = buy_order_target.get_price()
+                else:
+                    trade_price = min(sell_order.get_price(), buy_order_target.get_price())
 
                 # setting the quantity that was traded
                 if (sell_order.get_qty() >= buy_order_target.get_qty()):
@@ -534,7 +561,12 @@ class MatchingMachine:
                 else: 
                     trade_qty = sell_order.get_qty()
 
-                Utilities.print_message('Trade, price: ${}, qty: {} un.'.format(trade_price, trade_qty))
+                Utilities.print_message('Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
+                    trade_price, 
+                    trade_qty, 
+                    sell_order.get_id(),
+                    buy_order_target.get_id()
+                ))
 
                 # partial trade
                 self.partial_trade(
@@ -553,16 +585,25 @@ class MatchingMachine:
 
         for buy_order_id in self.book.get_buy_orders():
             buy_order = self.book.get_order(buy_order_id)
-            buy_order_price = buy_order.get_price()
+            buy_order_price = True
+
+            if not (buy_order.is_market_order()):
+                buy_order_price = buy_order.get_price()
 
             # this order is executed if the buy price is equal to or greater than the desired sell price
             if (
-                buy_order_price >= sell_order_target.get_price() and 
-                # verifying whether pegged order already have price
-                buy_order_price > 0
+                (
+                    buy_order_price >= sell_order_target.get_price() and 
+                    # verifying whether pegged order already have price
+                    buy_order_price > 0
+                ) or
+                buy_order_price
             ):
                 # getting the highest value between the orders 
-                trade_price = max(sell_order_target.get_price(), buy_order.get_price())
+                if (buy_order.is_market_order):
+                    trade_price = sell_order_target.get_price()
+                else:
+                    trade_price = max(sell_order_target.get_price(), buy_order.get_price())
 
                 # setting the quantity that was traded
                 if (sell_order_target.get_qty() <= buy_order.get_qty()):
@@ -570,7 +611,12 @@ class MatchingMachine:
                 else: 
                     trade_qty = buy_order.get_qty()
 
-                Utilities.print_message('Trade, price: ${}, qty: {} un.'.format(trade_price, trade_qty))
+                Utilities.print_message('Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
+                    trade_price, 
+                    trade_qty, 
+                    buy_order.get_id(),
+                    sell_order_target.get_id()
+                ))
 
                 # partial trade
                 self.partial_trade(
@@ -597,7 +643,12 @@ class MatchingMachine:
             # getting the lowest quantity
             trade_qty = min(buy_order_target.get_qty(), sell_order.get_qty())
             
-            Utilities.print_message('Trade, price: ${}, qty: {} un.'.format(trade_price, trade_qty))
+            Utilities.print_message('Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
+                    trade_price, 
+                    trade_qty, 
+                    sell_order.get_id(),
+                    buy_order_target.get_id()
+            ))
 
             # partial trade
             self.partial_trade(
@@ -627,7 +678,12 @@ class MatchingMachine:
 
             trade_qty = min(sell_order_target.get_qty(), buy_order.get_qty())
             
-            Utilities.print_message('Trade, price: ${}, qty: {} un.'.format(trade_price, trade_qty))
+            Utilities.print_message('Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
+                    trade_price, 
+                    trade_qty, 
+                    buy_order.get_id(),
+                    sell_order_target.get_id()
+                ))
 
             # partial trade
             self.partial_trade(
@@ -804,7 +860,8 @@ machine = MatchingMachine(primary_book)
 # machine.add_order('pegged offer sell 100')
 # machine.add_order('limit sell 20 10')
 
-machine.manual_input_handler('create order pegged bid buy 120, create order pegged offer sell 120, create order limit sell 20 20, create order limit buy 10 10')
+machine.manual_input_handler('create order market sell 200, create order market buy 200')
+# machine.manual_input_handler()
 # machine.manual_input_handler('limit buy 20 10, limit buy 30 10, limit buy 10 10, market sell 10, exit')
 
 print((primary_book.get_sell_orders()))
