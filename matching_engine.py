@@ -12,7 +12,7 @@ class Utilities:
 
     @staticmethod
     def print_message(msg: str):
-        msg_icon = '>> ' if MatchinEngine.get_trade_state() else '==  '
+        msg_icon = '>> ' if MatchingEngine.get_trade_state() else '==  '
         print(msg_icon + msg)
 
 class Order:
@@ -199,9 +199,10 @@ class OrderBook:
         self.buy_side_dict = {}
         self.sell_side_dict = {}
         self.all_orders_dict = {}
+        self.not_executed_orders_dict = {}
         self.filled_orders_dict = {}
 
-    def add_order(self, order: Order):
+    def add_order(self, order: Order, paused_mode: bool = False):
         if (order.is_buy_order()):
             order.set_id(self.get_order_index())
             self.buy_side_dict[order.get_id()] = order
@@ -215,6 +216,11 @@ class OrderBook:
         self.update_index_prices(order)
 
         self.all_orders_dict[order.get_id()] = order
+
+        # storing the order in the specific dict to execute in priority order when the trade has resumed
+        if (paused_mode):
+            self.not_executed_orders_dict[order.get_id()] = order
+
         Utilities.print_message('Order created: {}'.format(order))
 
     def update_index_prices(self, order: Order):
@@ -316,6 +322,9 @@ class OrderBook:
 
     def add_filled_order(self, order_id: int):
         self.filled_orders_dict[order_id] = self.get_order(order_id)
+
+    def get_not_executed_orders(self):
+        return (self.not_executed_orders_dict)
 
     def get_last_active_order_id(self) -> int:
         """
@@ -436,18 +445,18 @@ class OrderBook:
     def get_all_filled_orders(self) -> dict:
         return (self.filled_orders_dict)
 
-class MatchinEngine:
+class MatchingEngine:
     # statics attributes
     execute_orders = True
     receive_inputs = True
 
     @staticmethod
     def togle_trades_state():
-        MatchinEngine.execute_orders = not MatchinEngine.execute_orders
+        MatchingEngine.execute_orders = not MatchingEngine.execute_orders
 
     @staticmethod
     def get_trade_state() -> bool:
-        return MatchinEngine.execute_orders
+        return MatchingEngine.execute_orders
 
     def __init__(self):
         self.book = OrderBook()
@@ -733,10 +742,7 @@ class MatchinEngine:
                 # verifying whether buy orders have already been created
                 len(self.book.get_buy_orders())
             ):
-                if (
-                    order.is_limit_order() or 
-                    order.is_pegged_order()
-                ):
+                if not (order.is_market_order):
                     try_execute_order_again = self.sell_limit_order(id)
                 else:
                     try_execute_order_again = self.sell_market_order(id)
@@ -746,10 +752,10 @@ class MatchinEngine:
                 self.try_execute_order(order.get_id())
             
     def manual_input_handler(self, direct_command: str = ''):
-        MatchinEngine.help()
+        MatchingEngine.help()
         Utilities.print_message('Enter your orders/commands line by line:')
         
-        while (MatchinEngine.receive_inputs):
+        while (MatchingEngine.receive_inputs):
             if (direct_command):
                 prompt_input_arr = (direct_command).split(',')
                 direct_command = ''
@@ -789,20 +795,20 @@ class MatchinEngine:
                                             
 
                 elif ('pause' in command):
-                    MatchinEngine.togle_trades_state()
+                    MatchingEngine.togle_trades_state()
                     Utilities.print_message("Trades are currently paused. Type 'resume trade' to resume.")
 
                 elif ('resume' in command):
-                    MatchinEngine.togle_trades_state()
+                    MatchingEngine.togle_trades_state()
                     Utilities.print_message("Trades have resumed.")
-                    
-                    last_created_order = self.book.get_order(
-                        self.book.get_last_active_order_id()
-                    )
 
-                    # verify whether the last created order has been executed
-                    if not (last_created_order.has_this_order_executed()):
-                        self.try_execute_order(last_created_order.get_id())
+                    # verify whether exist not executed orders
+                    for order in self.book.get_not_executed_orders():
+                        self.try_execute_order(order)
+                        
+                        # removing order of not executed dict
+                        order_id = order.get_id()
+                        del (self.book.not_executed_orders_dict[order_id])
             
                 elif ('cancel' in command):
                     cmd_arr = command.split(' ')
@@ -851,10 +857,10 @@ class MatchinEngine:
 
                 elif ('exit' in command):
                     Utilities.print_message('Ending the program...')
-                    MatchinEngine.receive_inputs = False
+                    MatchingEngine.receive_inputs = False
                 
                 elif ('help' in command):
-                    MatchinEngine.help()
+                    MatchingEngine.help()
 
                 elif ('skip' in command):
                     pass
@@ -862,9 +868,12 @@ class MatchinEngine:
                 # create a new order and try execute
                 elif ('create' in command):
                     order = self.add_order(command)
+                    order_id = order.get_id()
                     
-                    if (MatchinEngine.execute_orders):
-                        self.try_execute_order(order.get_id())
+                    if (MatchingEngine.execute_orders):
+                        self.try_execute_order(order_id)
+                    else: 
+                        self.add_order(order_id, paused_mode = True)
                 else:
                     Utilities.print_error('"{}", is an invalid command and has been ignored. Type "help"'.format(command))
     
@@ -883,6 +892,3 @@ class MatchinEngine:
         Utilities.print_message('To resume the trade: resume')
         Utilities.print_message('To exit the program: exit')
         Utilities.print_message('Type "help" to see these tips again')
-
-
-machine = MatchinEngine()
