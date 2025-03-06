@@ -1,5 +1,8 @@
 # Matching Engine
 
+# Bugs corrigidos:
+1. Agora, Todas as ordens criadas enquanto o comércio estava pausado, serão executadas de acordo com sua prioridade. Antes, apenas a última ordem criada era executada quando o comércio era retomado
+
 # Considerações:
 
 Escolhi desenvolver a solução em Python, pois é a linguagem com a qual tenho mais familiaridade. Embora não seja ideal para trabalhar com POO, foi o suficiente para deixar o código mais legível e simples. 
