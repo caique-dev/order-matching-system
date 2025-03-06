@@ -1,7 +1,8 @@
 # Matching Engine
 
-# Bugs corrigidos:
-1. Agora, Todas as ordens criadas enquanto o comércio estava pausado, serão executadas de acordo com sua prioridade. Antes, apenas a última ordem criada era executada quando o comércio era retomado
+# Bugs corrigidos & melhorias:
+1. Agora, Todas as ordens criadas enquanto o comércio estava pausado, serão executadas de acordo com sua prioridade. Antes, apenas a última ordem criada era executada quando o comércio era retomado.
+2. Documentação mais detalhada.
 
 # Considerações:
 

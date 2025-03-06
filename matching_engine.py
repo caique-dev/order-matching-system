@@ -1,10 +1,16 @@
 class Utilities:
     @staticmethod
     def print_error(msg: str):
+        """
+        Prints a error message in a standardized way.
+        """
         Utilities.print_message('Error: ' + msg)
 
     @staticmethod
     def get_input(msg: str = ''):
+        """
+        Prints a message in a standardized way to get the user input.
+        """
         if not (msg):
             return input('<< ' + msg)
 
@@ -12,11 +18,15 @@ class Utilities:
 
     @staticmethod
     def print_message(msg: str):
+        """
+        Prints a message in a standardized way.
+        """
         msg_icon = '>> ' if MatchingEngine.get_trade_state() else '== '
         print(msg_icon + msg)
 
 class Order:
     def __init__(self, order_dict: dict):
+        """Order constructor"""
         self.id = None
 
         # setting type
@@ -85,6 +95,7 @@ class Order:
                 Utilities.print_error('This order has a invalid reference price')
 
     def __str__(self) -> str:
+        """Representation of the order as a string."""
         if (self.type != 'market'):
             price = ' @ $' + str(self.get_price())
 
@@ -104,6 +115,7 @@ class Order:
         return print_msg
     
     def __repr__(self):
+        """Order representation for some areas of VS Code"""
         return '(#{}) {} {} {} {}'.format(
             self.id,
             self.type,
@@ -131,6 +143,7 @@ class Order:
         return self.side
 
     def get_price(self) -> float:
+        """Return its own price for a limit/market order, or the bid/offer price for pegged orders"""
         if (self.type == 'pegged'):
             if (self.ref == 'bid'):
                 return OrderBook.get_bid_price()
@@ -180,6 +193,7 @@ class OrderBook:
         OrderBook.offer_price = value
 
     def __init__(self):
+        """OrderBook constructor."""
         self.order_index = 0
         
         self.buy_side_dict = {}
@@ -189,6 +203,7 @@ class OrderBook:
         self.filled_orders_dict = {}
 
     def add_order(self, order: Order, paused_mode):
+        """Adds the orders into the buy/sell dict instead of the dict with all orders. If trades are paused, also add the order to a specific dict."""
         if (order.is_buy_order()):
             order.set_id(self.get_order_index())
             self.buy_side_dict[order.get_id()] = order
@@ -210,6 +225,7 @@ class OrderBook:
         Utilities.print_message('Order created: {}'.format(order))
 
     def update_index_prices(self, order: Order):
+        """Update the bid and offer price if necessary."""
         if (order.is_limit_order()):
             order_price = order.get_price()
 
@@ -313,26 +329,17 @@ class OrderBook:
         return (self.not_executed_orders_dict)
 
     def reseting_not_executed_dict(self):
+        """Remove all orders of the dict."""
         self.not_executed_orders_dict.clear()
 
-    def get_last_active_order_id(self) -> int:
-        """
-        Return the id of last created active order
-        """
-        if (self.all_orders_dict.keys()):
-            target_key = list(self.all_orders_dict.keys())[-1]
-            return (self.get_all_orders())[target_key].get_id()
-    
     def get_order_index(self) -> int:
-        """
-        Return an avaible order id
-        """
         return self.order_index
 
     def incremment_order_index(self):
         self.order_index += 1
 
     def __str__(self):
+        """Representation of Orderbook as a string."""
         if (OrderBook.bid_price):
             _str ='\nBid price: {}\n'.format(OrderBook.bid_price)
         else: 
@@ -355,8 +362,8 @@ class OrderBook:
 
     def sort_dict_lim_peg_orders_by_price(self, side: str, reverse: bool = False) -> list:
         """
-        take buy/sell side dict orders, create an array with limit and peg orders
-        and sort this arr in ascending(default) or decending ordem
+        Take buy/sell side dict orders, create an array with limit and peg orders
+        and sort this arr in ascending(default) or decending ordem.
         """
         limit_orders_arr = []
 
@@ -379,8 +386,8 @@ class OrderBook:
     
     def sort_dict_lim_orders_by_price(self, side: str, reverse: bool = False) -> list:
         """
-        take buy/sell side dict orders, create an array with limit orders
-        and sort this arr in ascending(default) or decending ordem
+        Take buy/sell side dict orders, create an array with only limit orders
+        and sort this arr in ascending(default) or decending ordem.
         """
         limit_orders_arr = []
 
@@ -441,6 +448,7 @@ class MatchingEngine:
 
     @staticmethod
     def togle_trades_state():
+        """Pause or resume trades."""
         MatchingEngine.execute_orders = not MatchingEngine.execute_orders
 
     @staticmethod
@@ -451,6 +459,7 @@ class MatchingEngine:
         self.book = OrderBook()
 
     def add_order(self, order: str, paused_mode: bool = False) -> Order:
+        """Verify, create, and add a new order to the book."""
         order_arr = (order.strip()).split(' ')
 
         # orders attributes
@@ -491,6 +500,9 @@ class MatchingEngine:
         return order_obj
 
     def partial_trade(self, sell_order_id: int, buy_order_id: int):
+        """
+        Remove filled orders from the sell/buy/all orders dict and add them to the filled orders dict. Also, update the quantity of unfilled orders.
+        """
         sell_order = self.book.get_order(sell_order_id)
         sell_qty = sell_order.get_qty()
         
@@ -534,6 +546,7 @@ class MatchingEngine:
             self.book.add_filled_order(filled_order.get_id())
 
     def buy_limit_order(self, id: int) -> bool:
+        """Execute limit and pegged buy orders."""
         buy_order_target = self.book.get_order(id)
 
         for sell_order in self.book.get_sell_orders():
@@ -585,6 +598,7 @@ class MatchingEngine:
             return False
 
     def sell_limit_order(self, id: int) -> bool:
+        """Execute limit and pegged sell orders."""
         sell_order_target = self.book.get_order(id)
 
         for buy_order_id in self.book.get_buy_orders():
@@ -634,6 +648,7 @@ class MatchingEngine:
         return False
             
     def buy_market_order(self, id: int) -> bool:
+        """Execute buy market orders"""
         buy_order_target = self.book.get_order(id)
 
         # generating from sell orders dict an ascending sorted array
@@ -667,6 +682,7 @@ class MatchingEngine:
             return False
 
     def sell_market_order(self, id: int) -> bool:
+        """Execute sell market orders"""
         sell_order_target = self.book.get_order(id)
 
         # generating from sell orders dict an ascending sorted array
@@ -709,6 +725,7 @@ class MatchingEngine:
         return order
 
     def try_execute_order(self, id: int):
+        """Verify the type of the order and try to execute it."""
         if (self.book.order_exists(id)):
             order = self.book.get_order(id)
 
@@ -740,6 +757,7 @@ class MatchingEngine:
                 self.try_execute_order(order.get_id())
             
     def manual_input_handler(self, direct_command: str = ''):
+        """Get the user input and call handle it."""
         MatchingEngine.help()
         Utilities.print_message('Enter your orders/commands line by line:')
         
@@ -872,6 +890,7 @@ class MatchingEngine:
     
     @staticmethod
     def help():
+        """Infos about the CLI"""
         Utilities.print_message('To add a new order: create order [1] [2] [3] [4] [5]')
         Utilities.print_message(' - [1] <order type (limit/market/pegged)> ')
         Utilities.print_message(' - [2] <order index (just for pegged orders)(limit/market/pegged)>')
