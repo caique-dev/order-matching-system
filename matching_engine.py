@@ -12,13 +12,12 @@ class Utilities:
 
     @staticmethod
     def print_message(msg: str):
-        msg_icon = '>> ' if MatchingEngine.get_trade_state() else '==  '
+        msg_icon = '>> ' if MatchingEngine.get_trade_state() else '== '
         print(msg_icon + msg)
 
 class Order:
     def __init__(self, order_dict: dict):
         self.id = None
-        self.executed_once = False
 
         # setting type
         if not (
@@ -112,19 +111,6 @@ class Order:
             self.qty,
             '$'+str((self.get_price())) if (self.type != 'market') else ('')
         )
-     
-    def has_this_order_executed(self) -> bool:
-        """
-        Return true whether the order has already been executed once 
-        and return False otherwise
-        """
-        return (self.executed_once)
-
-    def set_executed_once(self):
-        """
-        signals that the order has already been executed at least once 
-        """
-        self.executed_once = True
 
     def set_id(self, id: int):
         self.id = id
@@ -202,7 +188,7 @@ class OrderBook:
         self.not_executed_orders_dict = {}
         self.filled_orders_dict = {}
 
-    def add_order(self, order: Order, paused_mode: bool = False):
+    def add_order(self, order: Order, paused_mode):
         if (order.is_buy_order()):
             order.set_id(self.get_order_index())
             self.buy_side_dict[order.get_id()] = order
@@ -325,6 +311,9 @@ class OrderBook:
 
     def get_not_executed_orders(self):
         return (self.not_executed_orders_dict)
+
+    def reseting_not_executed_dict(self):
+        self.not_executed_orders_dict.clear()
 
     def get_last_active_order_id(self) -> int:
         """
@@ -461,7 +450,7 @@ class MatchingEngine:
     def __init__(self):
         self.book = OrderBook()
 
-    def add_order(self, order: str) -> Order:
+    def add_order(self, order: str, paused_mode: bool = False) -> Order:
         order_arr = (order.strip()).split(' ')
 
         # orders attributes
@@ -497,7 +486,7 @@ class MatchingEngine:
         order_obj = Order(order_dict)
 
         if (order_obj):
-            self.book.add_order(order_obj)
+            self.book.add_order(order_obj, paused_mode)
         
         return order_obj
 
@@ -722,7 +711,6 @@ class MatchingEngine:
     def try_execute_order(self, id: int):
         if (self.book.order_exists(id)):
             order = self.book.get_order(id)
-            order.set_executed_once()
 
             # This variable signals whether the created order was completely filled or not
             try_execute_order_again = False
@@ -748,7 +736,7 @@ class MatchingEngine:
                     try_execute_order_again = self.sell_market_order(id)
 
             if (try_execute_order_again):
-                # trying to fill the current order
+                # trying to fill the current order again
                 self.try_execute_order(order.get_id())
             
     def manual_input_handler(self, direct_command: str = ''):
@@ -762,8 +750,20 @@ class MatchingEngine:
             else:
                 prompt_input_arr = (Utilities.get_input()).split(',')
 
-            for command in prompt_input_arr:
-                if ('print' in command):
+            for command in prompt_input_arr:# create a new order and try execute
+                if ('create' in command):
+                    # trades on
+                    if (MatchingEngine.execute_orders):
+                        order = self.add_order(command)
+                        order_id = order.get_id()
+                    
+                        self.try_execute_order(order_id)
+
+                    # trades off
+                    else: 
+                        order = self.add_order(command, paused_mode = True)
+
+                elif ('print' in command):
                     cmd_arr = command.split(' ')
 
                     if (len(cmd_arr) == 2):
@@ -803,12 +803,13 @@ class MatchingEngine:
                     Utilities.print_message("Trades have resumed.")
 
                     # verify whether exist not executed orders
-                    for order in self.book.get_not_executed_orders():
+                    for order_id in self.book.get_not_executed_orders():
+                        order = self.book.get_order(order_id)
                         self.try_execute_order(order)
                         
-                        # removing order of not executed dict
-                        order_id = order.get_id()
-                        del (self.book.not_executed_orders_dict[order_id])
+                    # reseting the dict of unexecuted orders
+                    if (len(self.book.get_not_executed_orders())):
+                        self.book.reseting_not_executed_dict()
             
                 elif ('cancel' in command):
                     cmd_arr = command.split(' ')
@@ -865,15 +866,7 @@ class MatchingEngine:
                 elif ('skip' in command):
                     pass
 
-                # create a new order and try execute
-                elif ('create' in command):
-                    order = self.add_order(command)
-                    order_id = order.get_id()
-                    
-                    if (MatchingEngine.execute_orders):
-                        self.try_execute_order(order_id)
-                    else: 
-                        self.add_order(order_id, paused_mode = True)
+                # invalid command
                 else:
                     Utilities.print_error('"{}", is an invalid command and has been ignored. Type "help"'.format(command))
     
