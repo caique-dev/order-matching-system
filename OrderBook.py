@@ -12,7 +12,7 @@ class OrderBook:
         self.not_executed_orders_dict = {}
         self.filled_orders_dict = {}
 
-    def add_order(self, order: Order, paused_mode):
+    def add_order(self, order: Order, paused_mode: bool):
         """Adds the orders into the buy/sell dict instead of the dict with all orders. If trades are paused, also add the order to a specific dict."""
         if (order.is_buy_order()):
             order.set_id(self.get_order_index())

@@ -3,7 +3,7 @@
 # Bugs corrigidos & melhorias:
 1. Agora, Todas as ordens criadas enquanto o comércio estava pausado, serão executadas de acordo com sua prioridade. Antes, apenas a última ordem criada era executada quando o comércio era retomado.
 2. Documentação mais detalhada.
-3. Separação dos classes em diferentes arquivos (ainda precisa de alguns ajustes)
+3. Separação dos classes em diferentes arquivos
 
 # Considerações:
 

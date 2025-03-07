@@ -19,7 +19,7 @@ class MatchingEngine:
     def __init__(self):
         self.book = OrderBook()
 
-    def add_order(self, order: str, paused_mode: bool = False) -> Order:
+    def add_order(self, order: str) -> Order:
         """Verify, create, and add a new order to the book."""
         order_arr = (order.strip()).split(' ')
 
@@ -56,7 +56,7 @@ class MatchingEngine:
         order_obj = Order(order_dict)
 
         if (order_obj):
-            self.book.add_order(order_obj, paused_mode)
+            self.book.add_order(order_obj, MatchingEngine.get_trade_state())
         
         return order_obj
 
@@ -337,16 +337,12 @@ class MatchingEngine:
 
             for command in prompt_input_arr:# create a new order and try execute
                 if ('create' in command):
-                    # trades on
-                    if (MatchingEngine.execute_orders):
-                        order = self.add_order(command)
-                        order_id = order.get_id()
-                    
-                        self.try_execute_order(order_id)
+                    order = self.add_order(command)
 
-                    # trades off
-                    else: 
-                        order = self.add_order(command, paused_mode = True)
+                    # trades on
+                    if (MatchingEngine.execute_orders and order):
+                        order_id = order.get_id()
+                        self.try_execute_order(order_id)
 
                 elif ('print' in command):
                     cmd_arr = command.split(' ')
