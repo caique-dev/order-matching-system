@@ -8,7 +8,7 @@ class MatchingEngine:
     receive_inputs = True
 
     @staticmethod
-    def togle_trades_state():
+    def toggle_trades_state():
         """Pause or resume trades."""
         MatchingEngine.execute_orders = not MatchingEngine.execute_orders
 
@@ -142,7 +142,7 @@ class MatchingEngine:
                 else: 
                     trade_qty = sell_order.get_qty()
 
-                Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
+                Utilities.print_message('Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
                     trade_price, 
                     trade_qty, 
                     sell_order.get_id(),
@@ -196,7 +196,7 @@ class MatchingEngine:
                 else: 
                     trade_qty = buy_order.get_qty()
 
-                Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
+                Utilities.print_message('Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
                     trade_price, 
                     trade_qty, 
                     buy_order.get_id(),
@@ -229,7 +229,7 @@ class MatchingEngine:
             # getting the lowest quantity
             trade_qty = min(buy_order_target.get_qty(), sell_order.get_qty())
             
-            Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
+            Utilities.print_message('Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
                     trade_price, 
                     trade_qty, 
                     sell_order.get_id(),
@@ -265,7 +265,7 @@ class MatchingEngine:
 
             trade_qty = min(sell_order_target.get_qty(), buy_order.get_qty())
             
-            Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
+            Utilities.print_message('Trade, price: ${}, qty: {} un. (sell order (ID: {}) and buy order (ID:{}))'.format(
                     trade_price, 
                     trade_qty, 
                     buy_order.get_id(),
@@ -287,7 +287,7 @@ class MatchingEngine:
     def cancel_order(self, id: int) -> Order:
         order = self.book.cancel_order(id)
         if (order):
-            Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='Order cancelled.')
+            Utilities.print_message('Order cancelled.')
 
         return order
 
@@ -326,7 +326,7 @@ class MatchingEngine:
     def manual_input_handler(self, direct_command: str = ''):
         """Get the user input and call handle it."""
         MatchingEngine.help()
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='Enter your orders/commands line by line:')
+        Utilities.print_message('Enter your orders/commands line by line:')
         
         while (MatchingEngine.receive_inputs):
             if (direct_command):
@@ -359,7 +359,7 @@ class MatchingEngine:
                             orders = self.book.get_all_filled_orders()
                             
                             if not (orders):
-                                Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='no orders have been filled yet')
+                                Utilities.print_message('no orders have been filled yet')
                             else:
                                 for order in orders:
                                     print(order)
@@ -369,23 +369,23 @@ class MatchingEngine:
 
                         if (self.book.order_exists(order_id)):
                             order = self.book.get_order(order_id)
-                            Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg=str(order))
+                            Utilities.print_message(str(order))
                         
                         elif (self.book.order_exists_filled(order_id)):
                             order = self.book.get_order(order_id)
-                            Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg=str(order))
+                            Utilities.print_message(str(order))
 
                     else:
                         Utilities.print_error('Invalid command.')
                                             
-
                 elif ('pause' in command):
-                    MatchingEngine.togle_trades_state()
-                    Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg="Trades are currently paused. Type 'resume trade' to resume.")
+                    MatchingEngine.toggle_trades_state()
+                    Utilities.toggle_out_icon()
+                    Utilities.print_message("Trades are currently paused. Type 'resume trade' to resume.")
 
                 elif ('resume' in command):
-                    MatchingEngine.togle_trades_state()
-                    Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg="Trades have resumed.")
+                    MatchingEngine.toggle_trades_state()
+                    Utilities.print_message("Trades have resumed.")
 
                     # verify whether exist not executed orders
                     for order_id in self.book.get_not_executed_orders():
@@ -423,7 +423,7 @@ class MatchingEngine:
                     
                     # changing
                     order = self.book.get_order(order_id)
-                    Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='Changing order {}'.format(order))
+                    Utilities.print_message('Changing order {}'.format(order))
 
                     new_price = ''
                     if (order.is_limit_order()):
@@ -439,10 +439,10 @@ class MatchingEngine:
                         new_qty=new_qty
                     )
                     new_order = self.book.get_order(order_id)
-                    Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='Order changed: {} -> {}'.format(old_order, new_order))
+                    Utilities.print_message('Order changed: {} -> {}'.format(old_order, new_order))
 
                 elif ('exit' in command):
-                    Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='Ending the program...')
+                    Utilities.print_message('Ending the program...')
                     MatchingEngine.receive_inputs = False
                 
                 elif ('help' in command):
@@ -458,16 +458,16 @@ class MatchingEngine:
     @staticmethod
     def help():
         """Infos about the CLI"""
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='To add a new order: create order [1] [2] [3] [4] [5]')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg=' - [1] <order type (limit/market/pegged)> ')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg=' - [2] <order index (just for pegged orders)(limit/market/pegged)>')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg=' - [3] <order side (sell/buy)>')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg=' - [4] <order price (just for limit orders)>')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg=' - [5] <order quantity>')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='To change an order: create <order id>')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='To cancel an order: cancel <order id>')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='To print the book: print <book/order/filled (to see the filled ordes)> <order id>')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='To pause the trades: pause')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='To resume the trade: resume')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='To exit the program: exit')
-        Utilities.print_message(trades_state=MatchingEngine.get_trade_state(), msg='Type "help" to see these tips again')
+        Utilities.print_message('To add a new order: create order [1] [2] [3] [4] [5]')
+        Utilities.print_message(' - [1] <order type (limit/market/pegged)> ')
+        Utilities.print_message(' - [2] <order index (just for pegged orders)(limit/market/pegged)>')
+        Utilities.print_message(' - [3] <order side (sell/buy)>')
+        Utilities.print_message(' - [4] <order price (just for limit orders)>')
+        Utilities.print_message(' - [5] <order quantity>')
+        Utilities.print_message('To change an order: create <order id>')
+        Utilities.print_message('To cancel an order: cancel <order id>')
+        Utilities.print_message('To print the book: print <book/order/filled (to see the filled ordes)> <order id>')
+        Utilities.print_message('To pause the trades: pause')
+        Utilities.print_message('To resume the trade: resume')
+        Utilities.print_message('To exit the program: exit')
+        Utilities.print_message('Type "help" to see these tips again')

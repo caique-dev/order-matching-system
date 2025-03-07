@@ -150,13 +150,13 @@ class OrderBook:
 
     def __str__(self):
         """Representation of Orderbook as a string."""
-        if (OrderBook.bid_price):
-            _str ='\nBid price: {}\n'.format(OrderBook.bid_price)
+        if (Order.bid_price):
+            _str ='\nBid price: {}\n'.format(Order.bid_price)
         else: 
             _str ='\nBid price: not priced yet\n'
 
-        if (OrderBook.offer_price):
-            _str +='Offer price: {}\n'.format(OrderBook.offer_price)
+        if (Order.offer_price):
+            _str +='Offer price: {}\n'.format(Order.offer_price)
         else: 
             _str +='Offer price: not priced yet\n'
 

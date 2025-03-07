@@ -1,4 +1,13 @@
 class Utilities:
+    output_icon = '>> '
+
+    @staticmethod
+    def toggle_out_icon():
+        """
+        Change the output message icon according the trades state  
+        """
+        Utilities.output_icon = '>> ' if ('==' in Utilities.output_icon) else ('== ')
+
     @staticmethod
     def print_error(msg: str):
         """
@@ -17,9 +26,8 @@ class Utilities:
         return input('<< ' + msg + ': ')
 
     @staticmethod
-    def print_message(trades_state: bool, msg: str):
+    def print_message(msg: str):
         """
         Prints a message in a standardized way.
         """
-        msg_icon = '>> ' if trades_state else '== '
-        print(msg_icon + msg)
+        print(Utilities.output_icon + msg)
