@@ -12,7 +12,7 @@ class OrderBook:
         self.not_executed_orders_dict = {}
         self.filled_orders_dict = {}
 
-    def add_order(self, order: Order, paused_mode: bool):
+    def add_order(self, order: Order , trades_on: bool):
         """Adds the orders into the buy/sell dict instead of the dict with all orders. If trades are paused, also add the order to a specific dict."""
         if (order.is_buy_order()):
             order.set_id(self.get_order_index())
@@ -29,7 +29,7 @@ class OrderBook:
         self.all_orders_dict[order.get_id()] = order
 
         # storing the order in the specific dict to execute in priority order when the trade has resumed
-        if (paused_mode):
+        if not (trades_on):
             self.not_executed_orders_dict[order.get_id()] = order
 
         Utilities.print_message('Order created: {}'.format(order))

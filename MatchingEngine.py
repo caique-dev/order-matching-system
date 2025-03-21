@@ -381,6 +381,7 @@ class MatchingEngine:
 
                 elif ('resume' in command):
                     MatchingEngine.toggle_trades_state()
+                    Utilities.toggle_out_icon()
                     Utilities.print_message("Trades have resumed.")
 
                     # verify whether exist not executed orders
